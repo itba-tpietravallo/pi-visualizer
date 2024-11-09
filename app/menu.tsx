@@ -1,6 +1,24 @@
-import { ChangeEvent, useRef, useState } from 'react';
+import { ChangeEvent, Dispatch, SetStateAction, useEffect, useRef, useState } from 'react';
 
-export default function Menu({ className, handleButtonClick, handleSelectChange }: {className?: string, handleButtonClick?: (action: string) => void, handleSelectChange?: (selectId: [string, string]) => void }) {
+export default function Menu({
+    className,
+    inputValue1,
+    inputValue2,
+    setInputValue1,
+    setInputValue2,
+    handleButtonClick,
+    handleSelectChange,
+    handleInputChange
+}: {
+    className?: string, 
+    inputValue1: number,
+    inputValue2: number,
+    setInputValue1: (value: number) => void,
+    setInputValue2: (value: number) => void,
+    handleButtonClick?: (action: string) => void,
+    handleSelectChange?: (selectId: [string, string]) => void,
+    handleInputChange?: (input: [number, number]) => void
+}) {
     const [showSecondInput, setShowSecondInput] = useState(false);
     const [select1, select2] = [useRef<HTMLSelectElement>(null), useRef<HTMLSelectElement>(null)];
 
@@ -8,9 +26,27 @@ export default function Menu({ className, handleButtonClick, handleSelectChange 
     const handleSelect = (event: ChangeEvent<HTMLSelectElement>, selectId: string) => {
         if (selectId === 'structure2') {
             setShowSecondInput(event.target.value !== "---");
+            setInputValue2(0);
         }
         handleSelectChange?.call(null, [select1.current!.value, select2.current!.value]);
     };
+
+    const handleInput = (event: ChangeEvent<HTMLInputElement>, inputNumber: number) => {
+        let value = parseInt(event.currentTarget.value);
+
+        if (Number.isNaN(value)) value = 0; 
+
+        if (inputNumber === 1) {
+            setInputValue1(value);
+        } else {
+            setInputValue2(value);
+        }
+    };
+
+    useEffect(() => {
+        console.log(inputValue1, inputValue2);
+        handleInputChange?.call(null, [inputValue1, inputValue2]);
+    }, [inputValue1, inputValue2, handleInputChange]);
 
     return (
         <div id="menu" className={className}>
@@ -20,6 +56,8 @@ export default function Menu({ className, handleButtonClick, handleSelectChange 
                     type="text"
                     inputMode="numeric"
                     pattern="[0-9]+"
+                    value={inputValue1}
+                    onChange={e  => handleInput(e,1)}
                     onKeyDown={(event) => {
                         if (!/[0-9]/.test(event.key) && !['Backspace', 'Delete', 'ArrowLeft', 'ArrowRight'].includes(event.key)) {
                             event.preventDefault();
@@ -33,6 +71,8 @@ export default function Menu({ className, handleButtonClick, handleSelectChange 
                     type="text"
                     inputMode="numeric"
                     pattern="[0-9]+"
+                    value={inputValue2}
+                    onChange={e => handleInput(e,2)}
                     onKeyDown={(event) => {
                         if (!/[0-9]/.test(event.key) && !['Backspace', 'Delete', 'ArrowLeft', 'ArrowRight'].includes(event.key)) {
                             event.preventDefault();
@@ -45,6 +85,8 @@ export default function Menu({ className, handleButtonClick, handleSelectChange 
                 <button className="border border-1 border-black rounded px-2" onClick={() => handleButtonClick?.call(null, 'Clear')}>Clear</button>
             </div>
             <div id="structure-selection" className="flex flex-row gap-x-2 m-2">
+                <button className="border border-1 border-black rounded px-2" onClick={() => handleButtonClick?.call(null, 'New')}>New</button>
+                <button className="border border-1 border-black rounded px-2" onClick={() => handleButtonClick?.call(null, 'Default')}>Default</button>
                 <select
                     ref={select1}
                     defaultValue="Linked List"

@@ -15,6 +15,11 @@ export abstract class DrawableElement {
     }
 }
 
+export abstract class Structure extends DrawableElement {
+    abstract insert(data: any): void;
+    abstract remove(data: any): void;
+}
+
 export class Node extends DrawableElement {
     constructor(public data: any, public next: Node | null = null) {
         super();
@@ -69,6 +74,7 @@ export class List extends DrawableElement {
 
     draw(ctx: CanvasRenderingContext2D, offsetX: number, offsetY: number) {
         let current = this.head;
+        this.setDrawAttributes(this.x, this.y, this.size, this.color);
         while (current) {
             current.draw(ctx, offsetX, offsetY);
             current.drawPointerToNext(ctx, offsetX, offsetY);
@@ -78,7 +84,7 @@ export class List extends DrawableElement {
     }
 
     setDrawAttributes(x: number, y: number, size: number, color: string) {
-        // super.setDrawAttributes(x, y, size, color);
+        super.setDrawAttributes(x, y, size, color);
         let current = this.head;
         while (current) {
             current.setDrawAttributes(x, y, size, color);
@@ -86,6 +92,41 @@ export class List extends DrawableElement {
             current = current.next;
         }
         return this;
+    }
+
+    insert(data: any) {
+        if (this.head === null) {
+            this.head = new Node(data, null).setDrawAttributes(this.x, this.y, this.size, this.color);
+            return;
+        }
+
+        let current = this.head;
+        let offset = 1;
+
+        while (current.next) {
+            current = current.next;
+            offset += 1;
+        }
+
+        current.next = new Node(data, null);
+    }
+
+    remove(data: any) {
+        if (this.head === null) return;
+
+        if (this.head.data === data) {
+            this.head = this.head.next;
+            return;
+        }
+
+        let current = this.head;
+        while (current.next) {
+            if (current.next.data === data) {
+                current.next = current.next.next;
+                return;
+            }
+            current = current.next;
+        }
     }
 }
 
