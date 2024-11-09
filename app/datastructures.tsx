@@ -13,13 +13,40 @@ export abstract class DrawableElement {
         this.y = y;
         return this;
     }
+
+    setDefaultDrawAttributes() {
+        this.setDrawAttributes(0, 0, 75, 'rgb(0, 0, 0)')
+        return this;
+    }
+
+    setHightlight(bool: boolean, ctx: CanvasRenderingContext2D, offsetX: number, offsetY: number) {
+        const prevColor = this.color;
+        this.color = bool ? 'rgb(255, 0, 0)' : this.color;
+        this.draw(ctx, offsetX, offsetY);
+        this.color = prevColor;
+        return this;
+    }
 }
 
 export abstract class Structure extends DrawableElement {
+    protected display: Display = Display.HORIZONTAL;
+    protected performActionInPlace: boolean = false;
+
     abstract insert(data: any): void;
     abstract remove(data: any): void;
     abstract search(data: any): Node | null;
     abstract getActions(): { name: string, action: (data: any) => void }[];
+    abstract applyToElements(fn : (elem: DrawableElement) => void): void;
+
+    setDisplay(display: Display): Structure {
+        this.display = display;
+        return this;
+    }
+
+    setPerformActionInPlace(performActionInPlace: boolean): Structure {
+        this.performActionInPlace = performActionInPlace;
+        return this;
+    }
 }
 
 export enum StructureType {
@@ -30,33 +57,19 @@ export enum StructureType {
     EMPTY = '---'
 }
 
-export function createStructure(type: StructureType): Structure | undefined {
-    switch (type) {
-        case StructureType.LIST:
-            return new List().setDrawAttributes(0, 0, 150, 'rgb(0, 0, 0)');
-        case StructureType.QUEUE:
-            return new Queue().setDrawAttributes(0, 0, 150, 'rgb(0, 0, 0)');
-        case StructureType.STACK:
-            return new Stack().setDrawAttributes(0, 0, 150, 'rgb(0, 0, 0)');
-        default:
-            return undefined;
-    }
+export enum Display {
+    HORIZONTAL = 'Horizontal',
+    VERTICAL = 'Vertical'
 }
 
-export function createDefaultStructure(type: StructureType): Structure | undefined {
-    switch (type) {
-        case StructureType.LIST:
-            return List.ofLength(3).setDrawAttributes(0, 0, 150, 'rgb(0, 0, 0)');
-        case StructureType.QUEUE:
-            return Queue.ofLength(3).setDrawAttributes(0, 0, 150, 'rgb(0, 0, 0)');
-        case StructureType.STACK:
-            return Stack.ofLength(3).setDrawAttributes(0, 0, 150, 'rgb(0, 0, 0)');
-        default:
-            return undefined;
-    }
+export enum NodeType {
+    RECTANGULAR = 'Rectangular',
+    CIRCULAR = 'Circular'
 }
 
 export class Node extends DrawableElement {
+    public type: NodeType = NodeType.CIRCULAR;
+
     constructor(public data: any, public next: Node | null = null) {
         super();
         this.data = data;
@@ -73,7 +86,16 @@ export class Node extends DrawableElement {
 
     draw(ctx: CanvasRenderingContext2D, offsetX: number, offsetY: number) {
         ctx.fillStyle = this.color || 'rgb(255, 0, 255)';
-        ctx.fillRect(this.x + offsetX, this.y + offsetY, this.size, this.size);
+
+        if (this.type === NodeType.CIRCULAR) {
+            ctx.beginPath();
+            ctx.arc(this.x + this.size / 2 + offsetX, this.y + this.size / 2 + offsetY, this.size / 2, 0, 2 * Math.PI);
+            ctx.fill();
+            ctx.stroke();
+        } else if (this.type === NodeType.RECTANGULAR) {
+            ctx.fillRect(this.x + offsetX, this.y + offsetY, this.size, this.size);
+        }
+
         ctx.fillStyle = 'rgb(255, 255, 255)';
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
@@ -85,12 +107,28 @@ export class Node extends DrawableElement {
     drawPointerToNext(ctx: CanvasRenderingContext2D, offsetX: number, offsetY: number) {
         if (this.next) {
             ctx.strokeStyle = 'rgb(0, 0, 0)';
-            canvasArrow(ctx, this.x + this.size + offsetX, this.y + this.size / 2 + offsetY, this.next.x + offsetX, this.next.y + this.size / 2 + offsetY);
+            const diffX = this.next.x - this.x;
+            const diffY = this.next.y - this.y;
+            
+            if (Math.abs(diffX) < 0.001) {
+                if (diffY > 0) {
+                    canvasArrow(ctx, this.x + this.size / 2 + offsetX, this.y + this.size + offsetY, this.next.x + this.next.size / 2 + offsetX, this.next.y + offsetY);
+                } else {
+                    canvasArrow(ctx, this.x + this.size / 2 + offsetX, this.y + offsetY, this.next.x + this.next.size / 2 + offsetX, this.next.y + this.next.size + offsetY);
+                }
+            } else {
+                if (diffX > 0) {
+                    canvasArrow(ctx, this.x + this.size + offsetX, this.y + this.size / 2 + offsetY, this.next.x + offsetX, this.next.y + this.next.size / 2 + offsetY);
+                } else {
+                    canvasArrow(ctx, this.x + offsetX, this.y + this.size / 2 + offsetY, this.next.x + this.next.size + offsetX, this.next.y + this.next.size / 2 + offsetY);
+                }
+            }
         }
     }
 }
 
 export class List extends Structure {
+    public readonly type: StructureType = StructureType.LIST;
     head: Node | null = null;
 
     constructor() {
@@ -121,14 +159,19 @@ export class List extends Structure {
         let current = this.head;
         while (current) {
             current.setDrawAttributes(x, y, size, color);
-            x += size * 1.5;
+
+            if (this.display === Display.HORIZONTAL) {
+                x += size * 1.5;
+            } else {
+                y += size * 1.5;
+            }
+
             current = current.next;
         }
         return this;
     }
 
     insert(data: any) {
-        console.log('List',data);
         if (this.head === null) {
             this.head = new Node(data, null);
             return;
@@ -193,9 +236,23 @@ export class List extends Structure {
             }
         ];
     }
+
+    applyToElements(fn: (elem: DrawableElement) => void) {
+        let current = this.head;
+        while (current) {
+            fn(current);
+            current = current.next;
+        }
+    }
+
+    setHightlight(bool: boolean, ctx: CanvasRenderingContext2D, offsetX: number, offsetY: number) {
+        this.applyToElements((elem) => elem.setHightlight(bool, ctx, offsetX, offsetY));
+        return this;
+    }
 }
 
 export class Queue extends List {
+    public readonly type: StructureType = StructureType.QUEUE;
     last: Node | null = null;
 
     constructor() {
@@ -224,7 +281,15 @@ export class Queue extends List {
         if (this.head === null) return null;
         const data = this.head.data;
         this.head = this.head.next;
-        this.x += this.size * 1.5;
+
+        if (!this.performActionInPlace) {
+            if (this.display === Display.HORIZONTAL) {
+                this.x += this.size * 1.5;
+            } else {
+                this.y += this.size * 1.5;
+            }
+        }
+            
         return data;
     }
 
@@ -247,6 +312,8 @@ export class Queue extends List {
 }
 
 export class Stack extends List {
+    public readonly type: StructureType = StructureType.STACK;
+
     constructor() {
         super();
     }
@@ -261,14 +328,29 @@ export class Stack extends List {
 
     insert(data: any) {
         this.head = new Node(data, this.head);
-        this.x -= this.size * 1.5;
+
+        if (!this.performActionInPlace) {
+            if (this.display === Display.HORIZONTAL) {
+                this.x -= this.size * 1.5;
+            } else {
+                this.y -= this.size * 1.5;
+            }
+        }
     }
 
     remove() {
         if (this.head === null) return null;
         const data = this.head.data;
         this.head = this.head.next;
-        this.x += this.size * 1.5;
+
+        if (!this.performActionInPlace) {
+            if (this.display === Display.HORIZONTAL) {
+                this.x += this.size * 1.5;
+            } else {
+                this.y += this.size * 1.5;
+            }
+        }
+
         return data;
     }
 
@@ -287,6 +369,32 @@ export class Stack extends List {
                 action: (data: any) => this.search(data)
             }
         ];
+    }
+}
+
+export function createStructure(type: StructureType): Structure | undefined {
+    switch (type) {
+        case StructureType.LIST:
+            return new List().setDefaultDrawAttributes();
+        case StructureType.QUEUE:
+            return new Queue().setDefaultDrawAttributes();
+        case StructureType.STACK:
+            return new Stack().setDefaultDrawAttributes();
+        default:
+            return undefined;
+    }
+}
+
+export function createDefaultStructure(type: StructureType): Structure | undefined {
+    switch (type) {
+        case StructureType.LIST:
+            return List.ofLength(3).setDefaultDrawAttributes();
+        case StructureType.QUEUE:
+            return Queue.ofLength(3).setDefaultDrawAttributes();
+        case StructureType.STACK:
+            return Stack.ofLength(3).setDefaultDrawAttributes();
+        default:
+            return undefined;
     }
 }
 
