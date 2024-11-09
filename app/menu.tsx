@@ -1,4 +1,5 @@
 import { ChangeEvent, Dispatch, SetStateAction, useEffect, useRef, useState } from 'react';
+import { StructureType, Structure } from './datastructures';
 
 export default function Menu({
     className,
@@ -6,6 +7,8 @@ export default function Menu({
     inputValue2,
     setInputValue1,
     setInputValue2,
+    actions,
+    triggerRender,
     handleButtonClick,
     handleSelectChange,
     handleInputChange
@@ -15,6 +18,8 @@ export default function Menu({
     inputValue2: number,
     setInputValue1: (value: number) => void,
     setInputValue2: (value: number) => void,
+    actions: ReturnType<Structure["getActions"]>, 
+    triggerRender: () => void,
     handleButtonClick?: (action: string) => void,
     handleSelectChange?: (selectId: [string, string]) => void,
     handleInputChange?: (input: [number, number]) => void
@@ -79,9 +84,11 @@ export default function Menu({
                         }
                     }}
                 />
-                <button className="border border-1 border-black rounded px-2" onClick={() => handleButtonClick?.call(null, 'Add')}>Add</button>
-                <button className="border border-1 border-black rounded px-2" onClick={() => handleButtonClick?.call(null, 'Delete')}>Delete</button>
-                <button className="border border-1 border-black rounded px-2" onClick={() => handleButtonClick?.call(null, 'Search')}>Search</button>
+                {
+                    actions.map((action, index) => (
+                        <button key={index} className="border border-1 border-black rounded px-2" onClick={() => (action.action(inputValue1), triggerRender())}>{action.name}</button>
+                    ))
+                }
                 <button className="border border-1 border-black rounded px-2" onClick={() => handleButtonClick?.call(null, 'Clear')}>Clear</button>
             </div>
             <div id="structure-selection" className="flex flex-row gap-x-2 m-2">
@@ -93,10 +100,11 @@ export default function Menu({
                     className="border border-1 border-black rounded px-2"
                     onChange={(event) => handleSelect(event, 'structure1')}
                 >
-                    <option>Linked List</option>
-                    <option>Stack</option>
-                    <option>Queue</option>
-                    <option>Vector</option>
+                    {
+                        Object.values(StructureType)
+                            .filter(a => a != StructureType.EMPTY)
+                            .map((type) => <option key={type}>{type}</option>) 
+                    }
                 </select>
                 <select
                     ref={select2}
@@ -104,11 +112,9 @@ export default function Menu({
                     className="border border-1 border-black rounded px-2"
                     onChange={(event) => handleSelect(event, 'structure2')}
                 >
-                    <option>Linked List</option>
-                    <option>Stack</option>
-                    <option>Queue</option>
-                    <option>Vector</option>
-                    <option>---</option>
+                    {
+                        Object.values(StructureType).map((type) => <option key={type}>{type}</option>) 
+                    }
                 </select>
             </div>
         </div>
