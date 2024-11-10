@@ -1,29 +1,50 @@
+const Context: { ctx: CanvasRenderingContext2D | null, offsetX: number, offsetY: number } = {
+    ctx: null,
+    offsetX: 0,
+    offsetY: 0,
+};
+
+export function setContext(ctx: CanvasRenderingContext2D, offsetX: number, offsetY: number) {
+    Context.ctx = ctx;
+    Context.offsetX = offsetX;
+    Context.offsetY = offsetY;
+}
+
 export abstract class DrawableElement {
     protected x: number = 0;
     protected y: number = 0;
     protected size: number = 0;
     protected color: string = '';
+    protected highlight: boolean = false;
 
-    abstract draw(ctx: CanvasRenderingContext2D, offsetX: number, offsetY: number): DrawableElement;
+    abstract draw(): DrawableElement;
 
-    setDrawAttributes(x: number, y: number, size: number, color: string) {
-        this.size = size;
-        this.color = color;
+    setDefaultDrawAttributes() {
+        this.setPos(0, 0);
+        this.setSize(75);
+        this.setColor('rgb(0, 0, 0)');
+        return this;
+    }
+
+    setPos(x: number, y: number) {
         this.x = x;
         this.y = y;
         return this;
     }
 
-    setDefaultDrawAttributes() {
-        this.setDrawAttributes(0, 0, 75, 'rgb(0, 0, 0)')
+    setSize(size: number) {
+        this.size = size;
         return this;
     }
 
-    setHightlight(bool: boolean, ctx: CanvasRenderingContext2D, offsetX: number, offsetY: number) {
-        const prevColor = this.color;
-        this.color = bool ? 'rgb(255, 0, 0)' : this.color;
-        this.draw(ctx, offsetX, offsetY);
-        this.color = prevColor;
+    setColor(color: string) {
+        this.color = color;
+        return this;
+    }
+
+    setHightlight(bool: boolean) {
+        this.highlight = bool;
+        this.draw();
         return this;
     }
 }
@@ -34,7 +55,7 @@ export abstract class Structure extends DrawableElement {
 
     abstract insert(data: any): void;
     abstract remove(data: any): void;
-    abstract search(data: any): Node | null;
+    // abstract search(data: any): Node | null;
     abstract getActions(): { name: string, action: (data: any) => void }[];
     abstract applyToElements(fn : (elem: DrawableElement) => void): void;
 
@@ -84,43 +105,47 @@ export class Node extends DrawableElement {
         return this.data === other.data;
     }
 
-    draw(ctx: CanvasRenderingContext2D, offsetX: number, offsetY: number) {
-        ctx.fillStyle = this.color || 'rgb(255, 0, 255)';
+    draw() {
+        if (!Context.ctx) return this;
+
+        Context.ctx.fillStyle = this.color || 'rgb(255, 0, 255)';
+        Context.ctx.strokeStyle = this.highlight ? 'rgb(255,0,0)' : Context.ctx.fillStyle;
+        Context.ctx.lineWidth = 3;
 
         if (this.type === NodeType.CIRCULAR) {
-            ctx.beginPath();
-            ctx.arc(this.x + this.size / 2 + offsetX, this.y + this.size / 2 + offsetY, this.size / 2, 0, 2 * Math.PI);
-            ctx.fill();
-            ctx.stroke();
+            Context.ctx.beginPath();
+            Context.ctx.arc(this.x + this.size / 2 + Context.offsetX, this.y + this.size / 2 + Context.offsetY, this.size / 2, 0, 2 * Math.PI);
+            Context.ctx.fill();
+            Context.ctx.stroke();
         } else if (this.type === NodeType.RECTANGULAR) {
-            ctx.fillRect(this.x + offsetX, this.y + offsetY, this.size, this.size);
+            Context.ctx.fillRect(this.x + Context.offsetX, this.y + Context.offsetY, this.size, this.size);
         }
 
-        ctx.fillStyle = 'rgb(255, 255, 255)';
-        ctx.textAlign = 'center';
-        ctx.textBaseline = 'middle';
-        ctx.font = '20px Arial';
-        ctx.fillText(this.data.toString(), this.x + this.size / 2 + offsetX, this.y + this.size / 2 + offsetY);
+        Context.ctx.fillStyle = 'rgb(255, 255, 255)';
+        Context.ctx.textAlign = 'center';
+        Context.ctx.textBaseline = 'middle';
+        Context.ctx.font = '20px Arial';
+        Context.ctx.fillText(this.data.toString(), this.x + this.size / 2 + Context.offsetX, this.y + this.size / 2 + Context.offsetY);
         return this;
     }
 
-    drawPointerToNext(ctx: CanvasRenderingContext2D, offsetX: number, offsetY: number) {
-        if (this.next) {
-            ctx.strokeStyle = 'rgb(0, 0, 0)';
+    drawPointerToNext() {
+        if (this.next && Context.ctx) {
+            Context.ctx.strokeStyle = 'rgb(0, 0, 0)';
             const diffX = this.next.x - this.x;
             const diffY = this.next.y - this.y;
             
             if (Math.abs(diffX) < 0.001) {
                 if (diffY > 0) {
-                    canvasArrow(ctx, this.x + this.size / 2 + offsetX, this.y + this.size + offsetY, this.next.x + this.next.size / 2 + offsetX, this.next.y + offsetY);
+                    canvasArrow(Context.ctx, this.x + this.size / 2 + Context.offsetX, this.y + this.size + Context.offsetY, this.next.x + this.next.size / 2 + Context.offsetX, this.next.y + Context.offsetY);
                 } else {
-                    canvasArrow(ctx, this.x + this.size / 2 + offsetX, this.y + offsetY, this.next.x + this.next.size / 2 + offsetX, this.next.y + this.next.size + offsetY);
+                    canvasArrow(Context.ctx, this.x + this.size / 2 + Context.offsetX, this.y + Context.offsetY, this.next.x + this.next.size / 2 + Context.offsetX, this.next.y + this.next.size + Context.offsetY);
                 }
             } else {
                 if (diffX > 0) {
-                    canvasArrow(ctx, this.x + this.size + offsetX, this.y + this.size / 2 + offsetY, this.next.x + offsetX, this.next.y + this.next.size / 2 + offsetY);
+                    canvasArrow(Context.ctx, this.x + this.size + Context.offsetX, this.y + this.size / 2 + Context.offsetY, this.next.x + Context.offsetX, this.next.y + this.next.size / 2 + Context.offsetY);
                 } else {
-                    canvasArrow(ctx, this.x + offsetX, this.y + this.size / 2 + offsetY, this.next.x + this.next.size + offsetX, this.next.y + this.next.size / 2 + offsetY);
+                    canvasArrow(Context.ctx, this.x + Context.offsetX, this.y + this.size / 2 + Context.offsetY, this.next.x + this.next.size + Context.offsetX, this.next.y + this.next.size / 2 + Context.offsetY);
                 }
             }
         }
@@ -143,31 +168,50 @@ export class List extends Structure {
         return list;
     }
 
-    draw(ctx: CanvasRenderingContext2D, offsetX: number, offsetY: number) {
+    setDefaultDrawAttributes() {
+        this.setPos(0, 0);
+        this.setSize(75);
+        this.setColor('rgb(0, 0, 0)');
+        return this;
+    }
+
+    draw() {
         let current = this.head;
-        this.setDrawAttributes(this.x, this.y, this.size, this.color);
+        this.setPos(this.x, this.y);
         while (current) {
-            current.draw(ctx, offsetX, offsetY);
-            current.drawPointerToNext(ctx, offsetX, offsetY);
+            current.draw();
+            current.drawPointerToNext();
             current = current.next;
         }
         return this;
     }
 
-    setDrawAttributes(x: number, y: number, size: number, color: string) {
-        super.setDrawAttributes(x, y, size, color);
+    setPos(x: number, y: number) {
+        super.setPos(x, y);
         let current = this.head;
         while (current) {
-            current.setDrawAttributes(x, y, size, color);
+            current.setPos(x, y);
 
             if (this.display === Display.HORIZONTAL) {
-                x += size * 1.5;
+                x += this.size * 1.5;
             } else {
-                y += size * 1.5;
+                y += this.size * 1.5;
             }
 
             current = current.next;
         }
+        return this;
+    }
+
+    setColor(color: string) {
+        super.setColor(color);
+        this.applyToElements((elem) => elem.setColor(color));
+        return this;
+    }
+
+    setSize(size: number) {
+        super.setSize(size);
+        this.applyToElements((elem) => elem.setSize(size));
         return this;
     }
 
@@ -209,10 +253,13 @@ export class List extends Structure {
         }
     }
 
-    search(data: any) {
+    * search(data: any) {
         let current = this.head;
         while (current) {
-            if (current.data === data) {
+            if (current.data < data) {
+                yield current;
+            }
+            if (current.data == data) {
                 return current;
             }
             current = current.next;
@@ -232,7 +279,7 @@ export class List extends Structure {
             },
             {
                 name: 'Search',
-                action: (data: any) => this.search(data)
+                action: (data: any) => wrapGenerator(this.search(data))
             }
         ];
     }
@@ -245,8 +292,8 @@ export class List extends Structure {
         }
     }
 
-    setHightlight(bool: boolean, ctx: CanvasRenderingContext2D, offsetX: number, offsetY: number) {
-        this.applyToElements((elem) => elem.setHightlight(bool, ctx, offsetX, offsetY));
+    setHightlight(bool: boolean) {
+        this.applyToElements((elem) => elem.setHightlight(bool));
         return this;
     }
 }
@@ -396,6 +443,27 @@ export function createDefaultStructure(type: StructureType): Structure | undefin
         default:
             return undefined;
     }
+}
+
+function wrapGenerator(generator: Generator<Node, Node | null, any>) {
+    const wait = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+    
+    Promise.resolve().then(async () => {
+        // @ts-ignore
+        let res: IteratorResult<Node, Node | null> = null;
+        let prevNode = undefined;
+        while (res = generator.next()) {
+            prevNode && prevNode.setHightlight(false);
+            prevNode = res.value;
+            prevNode && prevNode.setHightlight(true);
+            if (res.done) {
+                await wait(250);
+                break ;
+            }
+            await wait(250);
+        }
+        res?.value?.setHightlight(false);
+    });
 }
 
 // https://stackoverflow.com/a/6333775
