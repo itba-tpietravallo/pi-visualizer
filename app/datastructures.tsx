@@ -1,13 +1,15 @@
-const Context: { ctx: CanvasRenderingContext2D | null, offsetX: number, offsetY: number } = {
+const Context: { ctx: CanvasRenderingContext2D | null, offsetX: number, offsetY: number, Render: () => void } = {
     ctx: null,
     offsetX: 0,
     offsetY: 0,
+    Render: () => {},
 };
 
-export function setContext(ctx: CanvasRenderingContext2D, offsetX: number, offsetY: number) {
+export function setContext(ctx: CanvasRenderingContext2D, offsetX: number, offsetY: number, render: () => void) {
     Context.ctx = ctx;
     Context.offsetX = offsetX;
     Context.offsetY = offsetY;
+    Context.Render = render;
 }
 
 export abstract class DrawableElement {
@@ -53,9 +55,13 @@ export abstract class Structure extends DrawableElement {
     protected display: Display = Display.HORIZONTAL;
     protected performActionInPlace: boolean = false;
 
-    abstract insert(data: any): void;
-    abstract remove(data: any): void;
-    // abstract search(data: any): Node | null;
+    abstract insert(data: any): Generator<Node, Node | null>;
+    /**
+     * Note: This method shall YIELD the node that is being removed, instead of returning it. And return null. 
+     * This is to allow wrapGenerator to highlight the node being removed.
+     */
+    abstract remove(data: any): Generator<Node, Node | null>;
+    abstract search(data: any): Generator<Node, Node | null>;
     abstract getActions(): { name: string, action: (data: any) => void }[];
     abstract applyToElements(fn : (elem: DrawableElement) => void): void;
 
@@ -163,21 +169,16 @@ export class List extends Structure {
     static ofLength(length: number) {
         const list = new List();
         for (let i = 0; i < length; i++) {
-            list.insert(i);
+            exhaustGenerator(list.insert(i));
         }
         return list;
-    }
-
-    setDefaultDrawAttributes() {
-        this.setPos(0, 0);
-        this.setSize(75);
-        this.setColor('rgb(0, 0, 0)');
-        return this;
     }
 
     draw() {
         let current = this.head;
         this.setPos(this.x, this.y);
+        this.setSize(this.size);
+        this.setColor(this.color);
         while (current) {
             current.draw();
             current.drawPointerToNext();
@@ -215,42 +216,53 @@ export class List extends Structure {
         return this;
     }
 
-    insert(data: any) {
+    * insert(data: any) {
         if (this.head === null) {
             this.head = new Node(data, null);
-            return;
+            return this.head;
         }
 
         if (data < this.head.data) {
             this.head = new Node(data, this.head);
-            return;
+            return this.head;
         }
 
         let current = this.head;
+        yield current;
 
         while (current.next && data > current.next.data) {
             current = current.next;
+            yield current;
         }
 
         current.next = new Node(data, current.next);
+        return current.next;
     }
 
-    remove(data: any) {
-        if (this.head === null) return;
+    * remove(data: any) {
+        if (this.head === null) return null;
 
         if (this.head.data === data) {
+            let aux = this.head;
+            yield aux;
             this.head = this.head.next;
-            return;
+            return null;
         }
 
         let current = this.head;
+        yield current;
         while (current.next && current.next.data <= data) {
-            if (current.next.data === data) {
+            if (current.next.data == data) {
+                let aux = current.next;
+                yield aux ;
                 current.next = current.next.next;
-                return;
+                return null;
             }
             current = current.next;
+            yield current;
         }
+
+        return null;
     }
 
     * search(data: any) {
@@ -271,11 +283,11 @@ export class List extends Structure {
         return [
             {
                 name: 'Insert',
-                action: (data: any) => this.insert(data)
+                action: (data: any) => wrapGenerator(this.insert(data))
             },
             {
                 name: 'Remove',
-                action: (data: any) => this.remove(data)
+                action: (data: any) => wrapGenerator(this.remove(data))
             },
             {
                 name: 'Search',
@@ -309,24 +321,27 @@ export class Queue extends List {
     static ofLength(length: number): Queue {
         const queue = new Queue();
         for (let i = 0; i < length; i++) {
-            queue.insert(i);
+            exhaustGenerator(queue.insert(i));
         }
         return queue;
     }
 
-    insert(data: any) {
+    * insert (data: any) {
         if (this.head === null || this.last == null) {
             this.head = this.last = new Node(data, null);
-            return;
+            return this.head;
         }
 
+        yield this.last;
         this.last.next = new Node(data, null);
         this.last = this.last.next;
+        return this.last;
     }
 
-    remove() {
+    * remove() {
         if (this.head === null) return null;
-        const data = this.head.data;
+        const aux = this.head;
+        yield this.head;
         this.head = this.head.next;
 
         if (!this.performActionInPlace) {
@@ -337,22 +352,22 @@ export class Queue extends List {
             }
         }
             
-        return data;
+        return null;
     }
 
     getActions(): { name: string; action: (data: any) => void; }[] {
         return [
             {
                 name: 'Insert (last)',
-                action: (data: any) => this.insert(data)
+                action: (data: any) => wrapGenerator(this.insert(data))
             },
             {
                 name: 'Remove (first)',
-                action: (data: any) => this.remove()
+                action: (data: any) => wrapGenerator(this.remove())
             },
             {
                 name: 'Search',
-                action: (data: any) => this.search(data)
+                action: (data: any) => wrapGenerator(this.search(data))
             }
         ];
     }
@@ -368,12 +383,13 @@ export class Stack extends List {
     static ofLength(length: number): Stack {
         const stack = new Stack();
         for (let i = 0; i < length; i++) {
-            stack.insert(i);
+            exhaustGenerator(stack.insert(i));
         }
         return stack
     }
 
-    insert(data: any) {
+    * insert(data: any) {
+        if (this.head) yield this.head;
         this.head = new Node(data, this.head);
 
         if (!this.performActionInPlace) {
@@ -383,11 +399,13 @@ export class Stack extends List {
                 this.y -= this.size * 1.5;
             }
         }
+
+        return this.head;
     }
 
-    remove() {
+    * remove() {
         if (this.head === null) return null;
-        const data = this.head.data;
+        yield this.head;
         this.head = this.head.next;
 
         if (!this.performActionInPlace) {
@@ -398,22 +416,22 @@ export class Stack extends List {
             }
         }
 
-        return data;
+        return null;
     }
 
     getActions(): { name: string; action: (data: any) => void; }[] {
         return [
             {
                 name: 'Insert (first)',
-                action: (data: any) => this.insert(data)
+                action: (data: any) => wrapGenerator(this.insert(data))
             },
             {
                 name: 'Remove (first)',
-                action: (data: any) => this.remove()
+                action: (data: any) => wrapGenerator(this.remove())
             },
             {
                 name: 'Search',
-                action: (data: any) => this.search(data)
+                action: (data: any) => wrapGenerator(this.search(data))
             }
         ];
     }
@@ -449,21 +467,36 @@ function wrapGenerator(generator: Generator<Node, Node | null, any>) {
     const wait = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
     
     Promise.resolve().then(async () => {
-        // @ts-ignore
-        let res: IteratorResult<Node, Node | null> = null;
+        let res: IteratorResult<Node, Node | null> ;
         let prevNode = undefined;
         while (res = generator.next()) {
             prevNode && prevNode.setHightlight(false);
             prevNode = res.value;
             prevNode && prevNode.setHightlight(true);
             if (res.done) {
+                // Needs to trigger a full re-render so position-color-size information flows down from the parent structures
+                // There's probably a better way to achieve this...
+                // (Only required on insert)
+                Context.Render();
                 await wait(250);
                 break ;
             }
             await wait(250);
         }
         res?.value?.setHightlight(false);
+        // Needs to trigger a full re-render so removed nodes are not drawn
+        // (Only required on remove)
+        Context.Render();
     });
+}
+
+function exhaustGenerator(generator: Generator<Node, Node | null, any>) {
+    let res: IteratorResult<Node, Node | null> ;
+    while (res = generator.next()) {
+        if (res.done) {
+            break ;
+        }
+    }
 }
 
 // https://stackoverflow.com/a/6333775

@@ -92,8 +92,8 @@ export default function Menu({
                 <button className="border border-1 border-black rounded px-2" onClick={() => handleButtonClick?.call(null, 'Clear')}>Clear</button>
             </div>
             <div id="structure-selection" className="flex flex-row gap-x-2 m-2">
-                <button className="border border-1 border-black rounded px-2" onClick={() => handleButtonClick?.call(null, 'New')}>New</button>
-                <button className="border border-1 border-black rounded px-2" onClick={() => handleButtonClick?.call(null, 'Default')}>Default</button>
+                {/* <button className="border border-1 border-black rounded px-2" onClick={() => handleButtonClick?.call(null, 'New')}>New</button> */}
+                <button className="border border-1 border-black rounded px-2" onClick={() => handleButtonClick?.call(null, 'Default')}>Create default</button>
                 <select
                     ref={select1}
                     defaultValue="Linked List"
