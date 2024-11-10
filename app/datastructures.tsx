@@ -58,14 +58,14 @@ export abstract class Structure extends DrawableElement {
     protected display: Display = Display.HORIZONTAL;
     protected performActionInPlace: boolean = false;
 
-    abstract insert(data: any): Generator<Node, Node | null>;
+    abstract insert(key: any, value: any): Generator<Node, Node>;
     /**
-     * Note: This method shall YIELD the node that is being removed, instead of returning it. And return null. 
+     * Note: This method shall YIELD the node that is being removed, instead of returning it, and returns null.
      * This is to allow wrapGenerator to highlight the node being removed.
      */
-    abstract remove(data: any): Generator<Node, Node | null>;
-    abstract search(data: any): Generator<Node, Node | null>;
-    abstract getActions(): { name: string, action: (data: any) => void }[];
+    abstract remove(key: any, value: any): Generator<Node, Node | null>;
+    abstract search(key: any, value: any): Generator<Node, Node | null>;
+    abstract getActions(): { name: string, action: (key: any) => void }[];
     abstract applyToElements(fn : (elem: DrawableElement) => void): void;
 
     setDisplay(display: Display): Structure {
@@ -100,18 +100,16 @@ export enum NodeType {
 export class Node extends DrawableElement {
     public type: NodeType = NodeType.CIRCULAR;
 
-    constructor(public data: any, public next: Node | null = null) {
+    constructor(public key: any, public value: any, public next: Node | null = null) {
         super();
-        this.data = data;
-        this.next = next;
     }
 
     toString() {
-        return this.data.toString();
+        return this.value ? this.value.toString() : this.key.toString();
     }
 
     equals(other: Node) {
-        return this.data === other.data;
+        return this.key === other.key;
     }
 
     draw() {
@@ -134,7 +132,7 @@ export class Node extends DrawableElement {
         Context.ctx.textAlign = 'center';
         Context.ctx.textBaseline = 'middle';
         Context.ctx.font = '20px Arial';
-        Context.ctx.fillText(this.data.toString(), this.x + this.size / 2 + Context.offsetX, this.y + this.size / 2 + Context.offsetY);
+        Context.ctx.fillText(this.toString(), this.x + this.size / 2 + Context.offsetX, this.y + this.size / 2 + Context.offsetY);
         return this;
     }
 
@@ -219,33 +217,33 @@ export class List extends Structure {
         return this;
     }
 
-    * insert(data: any) {
+    * insert(data: any, value: any = null) {
         if (this.head === null) {
-            this.head = new Node(data, null);
+            this.head = new Node(data, value, null);
             return this.head;
         }
 
-        if (data < this.head.data) {
-            this.head = new Node(data, this.head);
+        if (data < this.head.key) {
+            this.head = new Node(data, value, this.head);
             return this.head;
         }
 
         let current = this.head;
         yield current;
 
-        while (current.next && data > current.next.data) {
+        while (current.next && data > current.next.key) {
             current = current.next;
             yield current;
         }
 
-        current.next = new Node(data, current.next);
+        current.next = new Node(data, value, current.next);
         return current.next;
     }
 
-    * remove(data: any) {
+    * remove(key: any) {
         if (this.head === null) return null;
 
-        if (this.head.data === data) {
+        if (this.head.key === key) {
             let aux = this.head;
             yield aux;
             this.head = this.head.next;
@@ -254,8 +252,8 @@ export class List extends Structure {
 
         let current = this.head;
         yield current;
-        while (current.next && current.next.data <= data) {
-            if (current.next.data == data) {
+        while (current.next && current.next.key <= key) {
+            if (current.next.key == key) {
                 let aux = current.next;
                 yield aux ;
                 current.next = current.next.next;
@@ -268,13 +266,13 @@ export class List extends Structure {
         return null;
     }
 
-    * search(data: any) {
+    * search(key: any) {
         let current = this.head;
         while (current) {
-            if (current.data < data) {
+            if (current.key < key) {
                 yield current;
             }
-            if (current.data == data) {
+            if (current.key == key) {
                 return current;
             }
             current = current.next;
@@ -329,14 +327,14 @@ export class Queue extends List {
         return queue;
     }
 
-    * insert (data: any) {
+    * insert (data: any, value: any = null) {
         if (this.head === null || this.last == null) {
-            this.head = this.last = new Node(data, null);
+            this.head = this.last = new Node(data, value, null);
             return this.head;
         }
 
         yield this.last;
-        this.last.next = new Node(data, null);
+        this.last.next = new Node(data, value, null);
         this.last = this.last.next;
         return this.last;
     }
@@ -391,9 +389,9 @@ export class Stack extends List {
         return stack
     }
 
-    * insert(data: any) {
+    * insert(data: any, value: any = null) {
         if (this.head) yield this.head;
-        this.head = new Node(data, this.head);
+        this.head = new Node(data, value, this.head);
 
         if (!this.performActionInPlace) {
             if (this.display === Display.HORIZONTAL) {
