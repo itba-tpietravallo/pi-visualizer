@@ -1,9 +1,12 @@
-const Context: { ctx: CanvasRenderingContext2D | null, offsetX: number, offsetY: number, Render: () => void } = {
+const Context: { ctx: CanvasRenderingContext2D | null, offsetX: number, offsetY: number, Render: () => void, } = {
     ctx: null,
     offsetX: 0,
     offsetY: 0,
     Render: () => {},
 };
+
+let intervalMS = 0;
+export const setIntervalMS = (ms: number) => intervalMS = ms;
 
 export function setContext(ctx: CanvasRenderingContext2D, offsetX: number, offsetY: number, render: () => void) {
     Context.ctx = ctx;
@@ -478,10 +481,10 @@ function wrapGenerator(generator: Generator<Node, Node | null, any>) {
                 // There's probably a better way to achieve this...
                 // (Only required on insert)
                 Context.Render();
-                await wait(250);
+                await wait(intervalMS);
                 break ;
             }
-            await wait(250);
+            await wait(intervalMS);
         }
         res?.value?.setHightlight(false);
         // Needs to trigger a full re-render so removed nodes are not drawn
