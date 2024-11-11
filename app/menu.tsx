@@ -23,7 +23,7 @@ export default function Menu({
     actions: ReturnType<Structure["getActions"]>, 
     triggerRender: () => void,
     handleButtonClick?: (action: string) => void,
-    handleSelectChange?: (selectId: [string, string]) => void,
+    handleSelectChange?: Dispatch<SetStateAction<[StructureType, StructureType]>>,
     handleInputChange?: (input: [number, number]) => void
 }) {
     const [showSecondInput, setShowSecondInput] = useState(false);
@@ -34,8 +34,10 @@ export default function Menu({
         if (selectId === 'structure2') {
             setShowSecondInput(event.target.value !== "---");
             if (event.target.value === "---") setInputValue2(0);
+        } else {
+            if (event.target.value != StructureType.LIST) select2.current!.value = StructureType.EMPTY;
         }
-        handleSelectChange?.call(null, [select1.current!.value, select2.current!.value]);
+        handleSelectChange?.call(null, [select1.current!.value as StructureType, select2.current!.value as StructureType]);
     };
 
     const handleInput = (event: ChangeEvent<HTMLInputElement>, inputNumber: number) => {
@@ -104,7 +106,7 @@ export default function Menu({
                 >
                     {
                         Object.values(StructureType)
-                            .filter(a => a != StructureType.EMPTY)
+                            .filter(a => a != StructureType.EMPTY && a != StructureType.VECTOR)
                             .map((type) => <option key={type}>{type}</option>) 
                     }
                 </select>
@@ -115,7 +117,9 @@ export default function Menu({
                     onChange={(event) => handleSelect(event, 'structure2')}
                 >
                     {
-                        Object.values(StructureType).map((type) => <option key={type}>{type}</option>) 
+                        Object.values(StructureType)
+                        .filter(a => !(a == StructureType.VECTOR || (dataStructureSelection[0] != StructureType.LIST && a != StructureType.EMPTY)))
+                        .map((type) => <option key={type}>{type}</option>) 
                     }
                 </select>
             </div>

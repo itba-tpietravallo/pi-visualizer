@@ -55,6 +55,7 @@ export abstract class DrawableElement {
 }
 
 export abstract class Structure extends DrawableElement {
+    protected abstract type: StructureType;
     protected display: Display = Display.HORIZONTAL;
     protected performActionInPlace: boolean = false;
 
@@ -172,7 +173,7 @@ export class List extends Structure {
 
     head: Node | null = null;
 
-    constructor() {
+    constructor(public readonly allowDuplicates: boolean = true) {
         super();
     }
 
@@ -250,6 +251,8 @@ export class List extends Structure {
             current = current.next;
             yield current;
         }
+
+        if (!this.allowDuplicates && current.next && current.next.key == data) return current.next;
 
         current.next = new Node(data, value, current.next);
         return current.next;
@@ -331,7 +334,7 @@ export class Queue extends List {
     last: Node | null = null;
 
     constructor() {
-        super();
+        super(true);
     }
 
     static ofLength(length: number): Queue {
@@ -393,7 +396,7 @@ export class Stack extends List {
     public readonly type: StructureType = StructureType.STACK;
 
     constructor() {
-        super();
+        super(true);
     }
 
     static ofLength(length: number): Stack {
@@ -505,30 +508,21 @@ export class Composed extends Structure {
 
     * insert(key: any, value: any) {
         if (this.head === null) {
-            this.head = Composed.getNewStructure(this.subtype)!;
-            const l = Composed.getNewStructure(this.subtype)!;
+            this.head = Composed.getNewStructure(this.type, true)!;
+            const l = Composed.getNewStructure(this.subtype, false)!;
             yield * this.head.insert(key, l);
             return yield * l.insert(value, null);
         }
 
-        // If the parent type is a List, the search needs to be yielded
-        // @todo: This probably will apply to Vectors too
-        let aux = this.head instanceof List && !(Object.getPrototypeOf(this.head) instanceof List) ?
-            (yield * this.head.search(key)) :
-            exhaustGenerator(this.head.search(key));
+        const l = Composed.getNewStructure(this.subtype, false)!;
+        let aux = yield * this.head.insert(key, l);
 
-        if (aux == null) {
-            const l = Composed.getNewStructure(this.subtype)!;
-            const inserted = exhaustGenerator<Node, Node>(this.head.insert(key, l));
-    
-            // If a nested node is being added the properties need to be set again
+        // If the nested structure had to be added, set it's attr
+        if (l != aux.value) {
             this.setDefaultDrawAttributes();
             l.setDefaultDrawAttributes();
-            
-            yield inserted;
-            return yield * l.insert(value, null);
         }
-
+        
         return yield * aux.value.insert(value, null);
     }
 
@@ -583,10 +577,11 @@ export class Composed extends Structure {
         return composed;
     }
 
-    static getNewStructure(type: StructureType): Structure | undefined {
+    static getNewStructure(type: StructureType, isHead: boolean = false): Structure | undefined {
         switch (type) {
             case StructureType.LIST:
-                return new List().setDefaultDrawAttributes();
+                // No not allow duplicates in parent list
+                return new List(!isHead).setDefaultDrawAttributes();
             case StructureType.QUEUE:
                 return new Queue().setDefaultDrawAttributes();
             case StructureType.STACK:
