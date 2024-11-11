@@ -16,8 +16,8 @@ export function setContext(ctx: CanvasRenderingContext2D, offsetX: number, offse
 }
 
 export abstract class DrawableElement {
-    protected x: number = 0;
-    protected y: number = 0;
+    public x: number = 0;
+    public y: number = 0;
     protected size: number = 0;
     protected color: string = '';
     protected highlight: boolean = false;
@@ -58,14 +58,14 @@ export abstract class Structure extends DrawableElement {
     protected display: Display = Display.HORIZONTAL;
     protected performActionInPlace: boolean = false;
 
-    abstract insert(key: any, value: any): Generator<Node, Node>;
+    abstract insert(...vals: any[]): Generator<Node, Node>;
     /**
      * Note: This method shall YIELD the node that is being removed, instead of returning it, and returns null.
      * This is to allow wrapGenerator to highlight the node being removed.
      */
-    abstract remove(key: any, value: any): Generator<Node, Node | null>;
-    abstract search(key: any, value: any): Generator<Node, Node | null>;
-    abstract getActions(): { name: string, action: (key: any) => void }[];
+    abstract remove(...vals: any[]): Generator<Node, Node | null>;
+    abstract search(...vals: any[]): Generator<Node, Node | null>;
+    abstract getActions(): { name: string, action: (...vals: any[]) => void }[];
     abstract applyToElements(fn : (elem: DrawableElement) => void): void;
 
     setDisplay(display: Display): Structure {
@@ -105,11 +105,17 @@ export class Node extends DrawableElement {
     }
 
     toString() {
-        return this.value ? this.value.toString() : this.key.toString();
+        const t = (typeof this.value == "string" || typeof this.value == 'number') ? this.value.toString() : this.key.toString()
+        return t;
     }
 
     equals(other: Node) {
         return this.key === other.key;
+    }
+
+    setType(type: NodeType) {
+        this.type = type;
+        return this;
     }
 
     draw() {
@@ -126,6 +132,7 @@ export class Node extends DrawableElement {
             Context.ctx.stroke();
         } else if (this.type === NodeType.RECTANGULAR) {
             Context.ctx.fillRect(this.x + Context.offsetX, this.y + Context.offsetY, this.size, this.size);
+            Context.ctx.strokeRect(this.x + Context.offsetX, this.y + Context.offsetY, this.size, this.size);
         }
 
         Context.ctx.fillStyle = 'rgb(255, 255, 255)';
@@ -160,7 +167,9 @@ export class Node extends DrawableElement {
 }
 
 export class List extends Structure {
-    public readonly type: StructureType = StructureType.LIST;
+    public type: StructureType = StructureType.LIST;
+    public nodeType: NodeType = NodeType.CIRCULAR;
+
     head: Node | null = null;
 
     constructor() {
@@ -214,6 +223,12 @@ export class List extends Structure {
     setSize(size: number) {
         super.setSize(size);
         this.applyToElements((elem) => elem.setSize(size));
+        return this;
+    }
+
+    setNodeType(type: NodeType) {
+        this.nodeType = type;
+        this.applyToElements(elem => elem.setType(type));
         return this;
     }
 
@@ -297,7 +312,7 @@ export class List extends Structure {
         ];
     }
 
-    applyToElements(fn: (elem: DrawableElement) => void) {
+    applyToElements(fn: (elem: Node) => void) {
         let current = this.head;
         while (current) {
             fn(current);
@@ -438,7 +453,155 @@ export class Stack extends List {
     }
 }
 
-export function createStructure(type: StructureType): Structure | undefined {
+export class Composed extends Structure {
+    protected head: Structure | null = null;
+    constructor(protected type: StructureType, protected subtype: StructureType) {
+        super();
+    }
+
+    draw() {
+        this.setDefaultDrawAttributes();
+        this.head?.draw();
+        this.head?.applyToElements(elem => {
+            if (!(elem instanceof Node && elem.value instanceof Structure)) return ;
+
+            // Set horizontal-vertical arrangement
+            elem.value.setDisplay(this.display == Display.VERTICAL ? Display.HORIZONTAL : Display.VERTICAL);
+
+            // Assign different shapes to the parent/child nodes if both structures are a List
+            if (this.head instanceof List && elem.value instanceof List)
+                elem.value.setNodeType(this.head.nodeType == NodeType.CIRCULAR ? NodeType.RECTANGULAR : NodeType.CIRCULAR);
+
+            elem.value.draw();
+        });
+        return this;
+    }
+
+    setPos(x: number, y: number) {
+        super.setPos(x, y);
+        this.head?.setPos(x, y);
+        this.head?.applyToElements(elem => {
+            if (!(elem instanceof Node)) return ;
+
+            (elem.value as Structure).setPos(
+                elem.x + (this.display == Display.VERTICAL ? this.size * 1.5 : 0),
+                elem.y + (this.display == Display.HORIZONTAL ? this.size * 1.5 : 0)
+            );
+        });
+        return this;
+    }
+
+    setColor(color: string) {
+        super.setColor(color);
+        this.applyToElements(e => e.setColor(color));
+        return this;
+    }
+
+    setSize(size: number) {
+        super.setSize(size);
+        this.applyToElements(e => e.setSize(size));
+        return this;
+    }
+
+    * insert(key: any, value: any) {
+        if (this.head === null) {
+            this.head = Composed.getNewStructure(this.subtype)!;
+            const l = Composed.getNewStructure(this.subtype)!;
+            yield * this.head.insert(key, l);
+            return yield * l.insert(value, null);
+        }
+
+        // If the parent type is a List, the search needs to be yielded
+        // @todo: This probably will apply to Vectors too
+        let aux = this.head instanceof List && !(Object.getPrototypeOf(this.head) instanceof List) ?
+            (yield * this.head.search(key)) :
+            exhaustGenerator(this.head.search(key));
+
+        if (aux == null) {
+            const l = Composed.getNewStructure(this.subtype)!;
+            const inserted = exhaustGenerator<Node, Node>(this.head.insert(key, l));
+    
+            // If a nested node is being added the properties need to be set again
+            this.setDefaultDrawAttributes();
+            l.setDefaultDrawAttributes();
+            
+            yield inserted;
+            return yield * l.insert(value, null);
+        }
+
+        return yield * aux.value.insert(value, null);
+    }
+
+    getActions(): { name: string; action: (...vals: any[]) => void; }[] {
+        return [
+            { name: 'Insert', action: (...vals: [any, any]) => wrapGenerator(this.insert(...vals)) },
+            { name: 'Remove', action: (...vals: [any, any]) => wrapGenerator(this.remove(...vals)) },
+            { name: 'Search', action: (...vals: [any, any]) => wrapGenerator(this.search(...vals)) }
+        ];
+    }
+
+    * remove(key: any, value: any) {
+        let current: Node | null = (yield * this.head!.search(key));
+
+        if (current != null) {
+            yield current;
+            return yield * current.value.remove(value);
+        }
+
+        return null;
+    }
+
+    * search(key: any, value: any): Generator<Node, Node | null> {
+        let current: Node | null = (yield * this.head!.search(key));
+        if (current != null) {
+            yield current;
+            return yield * current.value.search(value);
+        }
+
+        return null;
+    }
+
+    applyToElements(fn: (elem: DrawableElement) => void) {
+        if (this.head) {
+            this.head.applyToElements(fn);
+            this.head.applyToElements((elem: Node | DrawableElement) => {
+                if (elem instanceof Node && elem.value != undefined && elem.value["applyToElements"]) {
+                    elem.value.applyToElements(fn);
+                }
+            });
+        }
+    }
+
+    static default(t1: StructureType = StructureType.LIST, t2: StructureType = StructureType.LIST): Composed {
+        const composed = new Composed(t1, t2);
+        exhaustGenerator(composed.insert(0, 0));
+        exhaustGenerator(composed.insert(1, 0));
+        exhaustGenerator(composed.insert(1, 1));
+        exhaustGenerator(composed.insert(2, 0));
+        exhaustGenerator(composed.insert(2, 1));
+        exhaustGenerator(composed.insert(2, 2));
+        return composed;
+    }
+
+    static getNewStructure(type: StructureType): Structure | undefined {
+        switch (type) {
+            case StructureType.LIST:
+                return new List().setDefaultDrawAttributes();
+            case StructureType.QUEUE:
+                return new Queue().setDefaultDrawAttributes();
+            case StructureType.STACK:
+                return new Stack().setDefaultDrawAttributes();
+            default:
+                return undefined;
+        }
+    }
+}
+
+export function createStructure(type: StructureType, subtype?: StructureType): Structure | undefined {
+    if (subtype != undefined && subtype != StructureType.EMPTY) {
+        return new Composed(type, subtype).setDefaultDrawAttributes();
+    }
+    
     switch (type) {
         case StructureType.LIST:
             return new List().setDefaultDrawAttributes();
@@ -451,7 +614,15 @@ export function createStructure(type: StructureType): Structure | undefined {
     }
 }
 
-export function createDefaultStructure(type: StructureType): Structure | undefined {
+export function createDefaultStructure(type: StructureType, subtype?: StructureType): Structure | undefined {
+    if ( type == StructureType.VECTOR || subtype == StructureType.VECTOR ) {
+        return undefined ; // @todo : Not implemented yet
+    }
+
+    if ( subtype != undefined && subtype != StructureType.EMPTY) {
+        return Composed.default(type, subtype).setDefaultDrawAttributes();
+    }
+
     switch (type) {
         case StructureType.LIST:
             return List.ofLength(3).setDefaultDrawAttributes();
@@ -471,6 +642,7 @@ function wrapGenerator(generator: Generator<Node, Node | null, any>) {
         let res: IteratorResult<Node, Node | null> ;
         let prevNode = undefined;
         while (res = generator.next()) {
+            console.log(res.value);
             prevNode && prevNode.setHightlight(false);
             prevNode = res.value;
             prevNode && prevNode.setHightlight(true);
@@ -491,13 +663,14 @@ function wrapGenerator(generator: Generator<Node, Node | null, any>) {
     });
 }
 
-function exhaustGenerator(generator: Generator<Node, Node | null, any>) {
-    let res: IteratorResult<Node, Node | null> ;
+function exhaustGenerator<T, R>(generator: Generator<T, R>) {
+    let res: IteratorResult<T, R> ;
     while (res = generator.next()) {
         if (res.done) {
             break ;
         }
     }
+    return res.value;
 }
 
 // https://stackoverflow.com/a/6333775

@@ -7,6 +7,7 @@ export default function Menu({
     inputValue2,
     setInputValue1,
     setInputValue2,
+    dataStructureSelection,
     actions,
     triggerRender,
     handleButtonClick,
@@ -18,6 +19,7 @@ export default function Menu({
     inputValue2: number,
     setInputValue1: (value: number) => void,
     setInputValue2: (value: number) => void,
+    dataStructureSelection: string[],
     actions: ReturnType<Structure["getActions"]>, 
     triggerRender: () => void,
     handleButtonClick?: (action: string) => void,
@@ -31,7 +33,7 @@ export default function Menu({
     const handleSelect = (event: ChangeEvent<HTMLSelectElement>, selectId: string) => {
         if (selectId === 'structure2') {
             setShowSecondInput(event.target.value !== "---");
-            setInputValue2(0);
+            if (event.target.value === "---") setInputValue2(0);
         }
         handleSelectChange?.call(null, [select1.current!.value, select2.current!.value]);
     };
@@ -86,7 +88,7 @@ export default function Menu({
                 />
                 {
                     actions.map((action, index) => (
-                        <button key={index} className="border border-1 border-black rounded px-2" onClick={() => (action.action(inputValue1), triggerRender())}>{action.name}</button>
+                        <button key={index} className="border border-1 border-black rounded px-2" onClick={() => (action.action(inputValue1, inputValue2), triggerRender())}>{action.name}</button>
                     ))
                 }
                 <button className="border border-1 border-black rounded px-2" onClick={() => handleButtonClick?.call(null, 'Clear')}>Clear</button>
@@ -96,7 +98,7 @@ export default function Menu({
                 <button className="border border-1 border-black rounded px-2" onClick={() => handleButtonClick?.call(null, 'Default')}>Create default</button>
                 <select
                     ref={select1}
-                    defaultValue="Linked List"
+                    defaultValue={dataStructureSelection[0]}
                     className="border border-1 border-black rounded px-2"
                     onChange={(event) => handleSelect(event, 'structure1')}
                 >
@@ -108,7 +110,7 @@ export default function Menu({
                 </select>
                 <select
                     ref={select2}
-                    defaultValue="---"
+                    defaultValue={dataStructureSelection[1]}
                     className="border border-1 border-black rounded px-2"
                     onChange={(event) => handleSelect(event, 'structure2')}
                 >
