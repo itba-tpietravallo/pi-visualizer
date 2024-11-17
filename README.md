@@ -1,5 +1,11 @@
 # pi-visualizer
-Visualization tool for the Imperative Programming (72.31) course at ITBA
+Abstract Data Types (ADTs) visualization tool for the Imperative Programming (72.31) course at ITBA
+
+## Contributing
+
+Contributions are welcome. Keep in mind some of the older commits (6929938d9446b5eba65e70ef5c6a2d97872fccbd through 7d76cbac020c39a6c07cddece3adbb6b18c946c1) were patched in from a private repository.
+
+This code is hosted under a subdomain and embeded as an `<iframe>` at https://www.tomaspietravallo.com/blog/itba-pi-visualizer
 
 ## Getting Started
 
