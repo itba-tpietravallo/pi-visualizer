@@ -637,7 +637,6 @@ function wrapGenerator(generator: Generator<Node, Node | null, any>) {
         let res: IteratorResult<Node, Node | null> ;
         let prevNode = undefined;
         while (res = generator.next()) {
-            console.log(res.value);
             prevNode && prevNode.setHightlight(false);
             prevNode = res.value;
             prevNode && prevNode.setHightlight(true);
