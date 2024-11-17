@@ -9,7 +9,6 @@ export default function Menu({
     setInputValue2,
     dataStructureSelection,
     actions,
-    triggerRender,
     handleButtonClick,
     handleSelectChange,
     handleInputChange
@@ -21,7 +20,6 @@ export default function Menu({
     setInputValue2: (value: number) => void,
     dataStructureSelection: string[],
     actions: ReturnType<Structure["getActions"]>, 
-    triggerRender: () => void,
     handleButtonClick?: (action: string) => void,
     handleSelectChange?: Dispatch<SetStateAction<[StructureType, StructureType]>>,
     handleInputChange?: (input: [number, number]) => void
@@ -90,7 +88,7 @@ export default function Menu({
                 />
                 {
                     actions.map((action, index) => (
-                        <button key={index} className="border border-1 border-black rounded px-2" onClick={() => (action.action(inputValue1, inputValue2), triggerRender())}>{action.name}</button>
+                        <button key={index} className="border border-1 border-black rounded px-2" onClick={ () => action.action(inputValue1, inputValue2) }>{action.name}</button>
                     ))
                 }
                 <button className="border border-1 border-black rounded px-2" onClick={() => handleButtonClick?.call(null, 'Clear')}>Clear</button>

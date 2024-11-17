@@ -1,11 +1,11 @@
 "use client";
 
-import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 
 import Menu from "./menu";
 import { createDefaultStructure, createStructure, setContext, Structure, StructureType, setIntervalMS as setGeneratorPause } from "./datastructures";
 
-let DATA_STRUCTURE: Structure ;
+let DATA_STRUCTURE: Structure | undefined;
 
 export default function Home() {
 	const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -17,6 +17,7 @@ export default function Home() {
 	const [ inputValue1, setInputValue1 ] = useState(0);
 	const [ inputValue2, setInputValue2 ] = useState(0);
 	const [ dataStructureSelection, setDataStructureSelection ] = useState([StructureType.LIST, StructureType.EMPTY] as [StructureType, StructureType]);
+	const [ actions, setActions ] = useState<ReturnType<Structure["getActions"]>>([]);
 
 	useLayoutEffect(() => {
 		function updateSize() {
@@ -27,8 +28,8 @@ export default function Home() {
 			canvas.height       = canvas.parentElement!.offsetHeight * 0.95;
 			canvas.style.width  = canvas.width + 'px';
 			canvas.style.height = canvas.height + 'px';
-			setContext(canvas.getContext('2d')!, origin.x, origin.y, () => Render(canvas, canvas.getContext('2d')!, origin));
-			Render(canvas, canvas.getContext('2d')!, origin);
+			setContext(canvas.getContext('2d')!, origin.x, origin.y, () => Render(canvas, canvas.getContext('2d')!));
+			Render(canvas, canvas.getContext('2d')!);
 		}
 
 		function handleMouseDown(e: MouseEvent) {
@@ -75,7 +76,8 @@ export default function Home() {
 		console.log(`Select changed to [${dataStructureSelection.toString()}]`);
 		DATA_STRUCTURE = createStructure(...dataStructureSelection)!;
 
-		Render(canvasRef.current!, canvasRef.current!.getContext('2d')!, origin);
+		setActions(DATA_STRUCTURE?.getActions() || []);
+		Render(canvasRef.current!, canvasRef.current!.getContext('2d')!);
 	}, [dataStructureSelection]);
 
 	useEffect(() => {
@@ -97,9 +99,6 @@ export default function Home() {
 			document.addEventListener("gestureend", function (e) {
 				e.preventDefault();
 			});
-
-			if(!canvasRef.current) return ;
-			setContext(canvasRef.current!.getContext('2d')!, origin.x, origin.y, () => Render(canvasRef.current!, canvasRef.current!.getContext('2d')!, origin));
 	}, []);
 
 	// Function to handle button clicks
@@ -116,10 +115,11 @@ export default function Home() {
 			break;
 		}
 
-		Render(canvasRef.current!, canvasRef.current!.getContext('2d')!, origin);
+		setActions(DATA_STRUCTURE?.getActions() || []);
+		Render(canvasRef.current!, canvasRef.current!.getContext('2d')!);
 	};
 
-	function Render(canvas: HTMLCanvasElement, ctx: CanvasRenderingContext2D, center: { x: number, y: number }) {
+	function Render(canvas: HTMLCanvasElement, ctx: CanvasRenderingContext2D) {
 		ctx.clearRect(0, 0, canvas.width, canvas.height);
 		DATA_STRUCTURE?.draw();
 	}
@@ -138,8 +138,7 @@ export default function Home() {
 				setInputValue1={setInputValue1}
 				setInputValue2={setInputValue2}
 				dataStructureSelection={dataStructureSelection}
-				actions={ DATA_STRUCTURE?.getActions() || [] }
-				triggerRender={() => Render(canvasRef.current!, canvasRef.current?.getContext('2d')!, origin)}
+				actions={actions}
 				handleButtonClick={handleButtonClick}
 				handleSelectChange={setDataStructureSelection}
 			/>

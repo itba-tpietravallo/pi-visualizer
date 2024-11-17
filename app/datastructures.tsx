@@ -18,7 +18,7 @@ export function setContext(ctx: CanvasRenderingContext2D, offsetX: number, offse
 export abstract class DrawableElement {
     public x: number = 0;
     public y: number = 0;
-    protected size: number = 0;
+    public size: number = 0;
     protected color: string = '';
     protected highlight: boolean = false;
 
@@ -51,6 +51,28 @@ export abstract class DrawableElement {
         this.highlight = bool;
         this.draw();
         return this;
+    }
+
+    static drawArrow(fromx: number, fromy: number, tox: number, toy: number, fromSize: number, toSize: number) {
+        if (Context.ctx) {
+            Context.ctx.strokeStyle = 'rgb(0, 0, 0)';
+            const diffX = tox - fromx;
+            const diffY = toy - fromy;
+            
+            if (Math.abs(diffX) < 0.001) {
+                if (diffY > 0) {
+                    canvasArrow(Context.ctx, fromx + fromSize / 2 + Context.offsetX, fromy + fromSize + Context.offsetY, tox + toSize / 2 + Context.offsetX, toy + Context.offsetY);
+                } else {
+                    canvasArrow(Context.ctx, fromx + fromSize / 2 + Context.offsetX, fromy + Context.offsetY, tox + toSize / 2 + Context.offsetX, toy + toSize + Context.offsetY);
+                }
+            } else {
+                if (diffX > 0) {
+                    canvasArrow(Context.ctx, fromx + fromSize + Context.offsetX, fromy + fromSize / 2 + Context.offsetY, tox + Context.offsetX, toy + toSize / 2 + Context.offsetY);
+                } else {
+                    canvasArrow(Context.ctx, fromx + Context.offsetX, fromy + fromSize / 2 + Context.offsetY, tox + toSize + Context.offsetX, toy + toSize / 2 + Context.offsetY);
+                }
+            }
+        }
     }
 }
 
@@ -145,24 +167,8 @@ export class Node extends DrawableElement {
     }
 
     drawPointerToNext() {
-        if (this.next && Context.ctx) {
-            Context.ctx.strokeStyle = 'rgb(0, 0, 0)';
-            const diffX = this.next.x - this.x;
-            const diffY = this.next.y - this.y;
-            
-            if (Math.abs(diffX) < 0.001) {
-                if (diffY > 0) {
-                    canvasArrow(Context.ctx, this.x + this.size / 2 + Context.offsetX, this.y + this.size + Context.offsetY, this.next.x + this.next.size / 2 + Context.offsetX, this.next.y + Context.offsetY);
-                } else {
-                    canvasArrow(Context.ctx, this.x + this.size / 2 + Context.offsetX, this.y + Context.offsetY, this.next.x + this.next.size / 2 + Context.offsetX, this.next.y + this.next.size + Context.offsetY);
-                }
-            } else {
-                if (diffX > 0) {
-                    canvasArrow(Context.ctx, this.x + this.size + Context.offsetX, this.y + this.size / 2 + Context.offsetY, this.next.x + Context.offsetX, this.next.y + this.next.size / 2 + Context.offsetY);
-                } else {
-                    canvasArrow(Context.ctx, this.x + Context.offsetX, this.y + this.size / 2 + Context.offsetY, this.next.x + this.next.size + Context.offsetX, this.next.y + this.next.size / 2 + Context.offsetY);
-                }
-            }
+        if (this.next) {
+            Node.drawArrow(this.x, this.y, this.next.x, this.next.y, this.size, this.next.size);
         }
     }
 }
@@ -262,8 +268,7 @@ export class List extends Structure {
         if (this.head === null) return null;
 
         if (this.head.key === key) {
-            let aux = this.head;
-            yield aux;
+            yield this.head;
             this.head = this.head.next;
             return null;
         }
@@ -272,8 +277,7 @@ export class List extends Structure {
         yield current;
         while (current.next && current.next.key <= key) {
             if (current.next.key == key) {
-                let aux = current.next;
-                yield aux ;
+                yield current.next ;
                 current.next = current.next.next;
                 return null;
             }
@@ -359,7 +363,6 @@ export class Queue extends List {
 
     * remove() {
         if (this.head === null) return null;
-        const aux = this.head;
         yield this.head;
         this.head = this.head.next;
 
@@ -382,7 +385,7 @@ export class Queue extends List {
             },
             {
                 name: 'Remove (first)',
-                action: (data: any) => wrapGenerator(this.remove())
+                action: () => wrapGenerator(this.remove())
             },
             {
                 name: 'Search',
@@ -446,7 +449,7 @@ export class Stack extends List {
             },
             {
                 name: 'Remove (first)',
-                action: (data: any) => wrapGenerator(this.remove())
+                action: () => wrapGenerator(this.remove())
             },
             {
                 name: 'Search',
@@ -475,6 +478,7 @@ export class Composed extends Structure {
             if (this.head instanceof List && elem.value instanceof List)
                 elem.value.setNodeType(this.head.nodeType == NodeType.CIRCULAR ? NodeType.RECTANGULAR : NodeType.CIRCULAR);
 
+            Composed.drawArrow(elem.x, elem.y, elem.value.x, elem.value.y, this.size, elem.size);
             elem.value.draw();
         });
         return this;
@@ -515,7 +519,7 @@ export class Composed extends Structure {
         }
 
         const l = Composed.getNewStructure(this.subtype, false)!;
-        let aux = yield * this.head.insert(key, l);
+        const aux = yield * this.head.insert(key, l);
 
         // If the nested structure had to be added, set it's attr
         if (l != aux.value) {
@@ -535,7 +539,7 @@ export class Composed extends Structure {
     }
 
     * remove(key: any, value: any) {
-        let current: Node | null = (yield * this.head!.search(key));
+        const current: Node | null = (yield * this.head!.search(key));
 
         if (current != null) {
             yield current;
@@ -546,7 +550,7 @@ export class Composed extends Structure {
     }
 
     * search(key: any, value: any): Generator<Node, Node | null> {
-        let current: Node | null = (yield * this.head!.search(key));
+        const current: Node | null = (yield * this.head!.search(key));
         if (current != null) {
             yield current;
             return yield * current.value.search(value);
@@ -637,9 +641,9 @@ function wrapGenerator(generator: Generator<Node, Node | null, any>) {
         let res: IteratorResult<Node, Node | null> ;
         let prevNode = undefined;
         while (res = generator.next()) {
-            prevNode && prevNode.setHightlight(false);
+            if (prevNode) prevNode.setHightlight(false);
             prevNode = res.value;
-            prevNode && prevNode.setHightlight(true);
+            if (prevNode) prevNode.setHightlight(true);
             if (res.done) {
                 // Needs to trigger a full re-render so position-color-size information flows down from the parent structures
                 // There's probably a better way to achieve this...
@@ -670,10 +674,10 @@ function exhaustGenerator<T, R>(generator: Generator<T, R>) {
 // https://stackoverflow.com/a/6333775
 function canvasArrow(context: CanvasRenderingContext2D, fromx: number, fromy: number, tox: number, toy: number) {
     context.beginPath();
-    var headlen = 10; // length of head in pixels
-    var dx = tox - fromx;
-    var dy = toy - fromy;
-    var angle = Math.atan2(dy, dx);
+    const headlen = 10; // length of head in pixels
+    const dx = tox - fromx;
+    const dy = toy - fromy;
+    const angle = Math.atan2(dy, dx);
     context.moveTo(fromx, fromy);
     context.lineTo(tox, toy);
     context.lineTo(tox - headlen * Math.cos(angle - Math.PI / 6), toy - headlen * Math.sin(angle - Math.PI / 6));
