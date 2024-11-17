@@ -1,11 +1,13 @@
-const Context: { ctx: CanvasRenderingContext2D | null, offsetX: number, offsetY: number, Render: () => void, } = {
+const Context: { ctx: CanvasRenderingContext2D | null, offsetX: number, offsetY: number, zoom: number, Render: () => void, } = {
     ctx: null,
     offsetX: 0,
     offsetY: 0,
+    zoom: 1,
     Render: () => {},
 };
 
 let intervalMS = 0;
+
 export const setIntervalMS = (ms: number) => intervalMS = ms;
 
 export function setContext(ctx: CanvasRenderingContext2D, offsetX: number, offsetY: number, render: () => void) {
@@ -13,6 +15,15 @@ export function setContext(ctx: CanvasRenderingContext2D, offsetX: number, offse
     Context.offsetX = offsetX;
     Context.offsetY = offsetY;
     Context.Render = render;
+}
+
+export function setZoom(deltaZoom: number) {
+    if (Context.zoom + deltaZoom < 0.1) return ;
+    Context.zoom += deltaZoom;
+}
+
+export function getZoom() {
+    return Context.zoom;
 }
 
 export abstract class DrawableElement {
@@ -55,6 +66,13 @@ export abstract class DrawableElement {
 
     static drawArrow(fromx: number, fromy: number, tox: number, toy: number, fromSize: number, toSize: number) {
         if (Context.ctx) {
+            fromx *= Context.zoom;
+            fromy *= Context.zoom;
+            tox *= Context.zoom;
+            toy *= Context.zoom;
+            fromSize *= Context.zoom;
+            toSize *= Context.zoom;
+
             Context.ctx.strokeStyle = 'rgb(0, 0, 0)';
             const diffX = tox - fromx;
             const diffY = toy - fromy;
@@ -143,6 +161,9 @@ export class Node extends DrawableElement {
 
     draw() {
         if (!Context.ctx) return this;
+        const x = this.x * Context.zoom;
+        const y = this.y * Context.zoom;
+        const size = this.size * Context.zoom;
 
         Context.ctx.fillStyle = this.color || 'rgb(255, 0, 255)';
         Context.ctx.strokeStyle = this.highlight ? 'rgb(255,0,0)' : Context.ctx.fillStyle;
@@ -150,19 +171,19 @@ export class Node extends DrawableElement {
 
         if (this.type === NodeType.CIRCULAR) {
             Context.ctx.beginPath();
-            Context.ctx.arc(this.x + this.size / 2 + Context.offsetX, this.y + this.size / 2 + Context.offsetY, this.size / 2, 0, 2 * Math.PI);
+            Context.ctx.arc(x + size / 2 + Context.offsetX, y + size / 2 + Context.offsetY, size / 2, 0, 2 * Math.PI);
             Context.ctx.fill();
             Context.ctx.stroke();
         } else if (this.type === NodeType.RECTANGULAR) {
-            Context.ctx.fillRect(this.x + Context.offsetX, this.y + Context.offsetY, this.size, this.size);
-            Context.ctx.strokeRect(this.x + Context.offsetX, this.y + Context.offsetY, this.size, this.size);
+            Context.ctx.fillRect(x + Context.offsetX, y + Context.offsetY, size, size);
+            Context.ctx.strokeRect(x + Context.offsetX, y + Context.offsetY, size, size);
         }
 
         Context.ctx.fillStyle = 'rgb(255, 255, 255)';
         Context.ctx.textAlign = 'center';
         Context.ctx.textBaseline = 'middle';
-        Context.ctx.font = '20px Arial';
-        Context.ctx.fillText(this.toString(), this.x + this.size / 2 + Context.offsetX, this.y + this.size / 2 + Context.offsetY);
+        Context.ctx.font = `${Math.ceil(20 * Context.zoom * 10) / 10}px Arial`;
+        Context.ctx.fillText(this.toString(), x + size / 2 + Context.offsetX, y + size / 2 + Context.offsetY);
         return this;
     }
 

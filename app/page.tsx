@@ -3,13 +3,14 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 
 import Menu from "./menu";
-import { createDefaultStructure, createStructure, setContext, Structure, StructureType, setIntervalMS as setGeneratorPause } from "./datastructures";
+import { createDefaultStructure, createStructure, setContext, Structure, StructureType, setIntervalMS as setGeneratorPause, setZoom } from "./datastructures";
 
 let DATA_STRUCTURE: Structure | undefined;
 
 export default function Home() {
 	const canvasRef = useRef<HTMLCanvasElement>(null);
 	const startDragOffset = useRef({ x: 0, y: 0 });
+	const startZoom = useRef(1);
 
 	const [ origin, setOrigin ] = useState({ x: 0, y: 0 });
 	const [ isDragging, setIsDragging ] = useState(false);
@@ -50,12 +51,41 @@ export default function Home() {
 			setIsDragging(false);
 		}
 
+		function resetZoom() {
+			startZoom.current = 1;
+		}
+
+		function zoom(e: WheelEvent) {
+			const rect = canvasRef.current?.getBoundingClientRect()!;
+			// @ts-expect-error gesture events (webkit specific)
+			const touchevent = typeof e.scale == 'number';
+			// @ts-expect-error gesture events (webkit specific)
+			const s = touchevent ? e.scale : e.deltaY;
+			const delta = touchevent ? (s - startZoom.current) : e.deltaY / 50;
+
+			// Prevent zooming the page
+			if (e.clientX >= rect.left && e.clientX <= rect.right && e.clientY >= rect.top && e.clientY <= rect.bottom)
+				e.preventDefault();
+
+			const x = (rect.left - e.clientX) + origin.x;
+			const y = (rect.top - e.clientY)  + origin.y;
+			setZoom(delta);
+			setOrigin({ x: origin.x + x * delta, y: origin.y + y * delta });
+			startZoom.current = s;
+			Render(canvasRef.current!, canvasRef.current!.getContext('2d')!);
+		}
+
 		const canvas = canvasRef.current;
 		
 		if (canvas) {
+			canvas.addEventListener("wheel", zoom);
 			canvas.addEventListener('mousedown', handleMouseDown);
-			canvas.addEventListener('mousemove', handleMouseMove);
-			canvas.addEventListener('mouseup', handleMouseUp);
+			canvas.addEventListener("gesturestart", resetZoom);
+			// @ts-expect-error gesture events (webkit specific)
+			canvas.addEventListener("gesturechange", zoom);
+			canvas.addEventListener("gestureend", resetZoom);
+			document.addEventListener('mousemove', handleMouseMove);
+			document.addEventListener('mouseup', handleMouseUp);
 		}
 
 		window.addEventListener('resize', updateSize);
@@ -64,9 +94,14 @@ export default function Home() {
 		return () => {
 			window.removeEventListener('resize', updateSize);
 			if (canvas) {
+				canvas.removeEventListener("wheel", zoom);
+				canvas.removeEventListener("gesturestart", resetZoom);
+				// @ts-expect-error gesture events (webkit specific)
+				canvas.removeEventListener("gesturechange", zoom);
+				canvas.removeEventListener("gestureend", resetZoom);
 				canvas.removeEventListener('mousedown', handleMouseDown);
-				canvas.removeEventListener('mousemove', handleMouseMove);
-				canvas.removeEventListener('mouseup', handleMouseUp);
+				document.removeEventListener('mousemove', handleMouseMove);
+				document.removeEventListener('mouseup', handleMouseUp);
 			}
 		};
 	}, [isDragging, origin]);
@@ -85,20 +120,20 @@ export default function Home() {
 		setGeneratorPause(1000 - (speed * 10));
 	}, [speed]);
 
+	const preventDefault = (e: Event) => e.preventDefault();
+
 	useEffect(() => {
 			// Prevent zooming gestures on the site's document
 			// @todo: zoom canvas
-			document.addEventListener("gesturestart", function (e) {
-				e.preventDefault();
-			});
-			
-			document.addEventListener("gesturechange", function (e) {
-				e.preventDefault();
-			});
+			document.addEventListener("gesturestart", preventDefault);
+			document.addEventListener("gesturechange", preventDefault);
+			document.addEventListener("gestureend", preventDefault);
 
-			document.addEventListener("gestureend", function (e) {
-				e.preventDefault();
-			});
+			return () => {
+				document.removeEventListener("gesturestart", preventDefault);
+				document.removeEventListener("gesturechange", preventDefault);
+				document.removeEventListener("gestureend", preventDefault);
+			}
 	}, []);
 
 	// Function to handle button clicks
@@ -146,7 +181,7 @@ export default function Home() {
 			<div className="flex flex-col justify-center items-center w-full !h-[60vh]">
 				<canvas
 					ref={canvasRef}
-					className="self-center border border-gray-300 rounded h-[95%] w-[95%]"
+					className="self-center border border-gray-300 rounded h-[95%] w-[95%] cursor-grab"
 				/>
 			</div>
 
