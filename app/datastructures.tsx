@@ -1,29 +1,95 @@
-const Context: { ctx: CanvasRenderingContext2D | null, offsetX: number, offsetY: number, zoom: number, Render: () => void, } = {
-    ctx: null,
-    offsetX: 0,
-    offsetY: 0,
-    zoom: 1,
-    Render: () => {},
-};
+export class Canvas {
+    private elements: DrawableElement[] = [];
+    private zoom: number = 1;
+    private offsetX = 0;
+    private offsetY = 0;
+    private ctx: CanvasRenderingContext2D | null = null;
+    private intervalMS = 0;
 
-let intervalMS = 0;
+    constructor(ctx: CanvasRenderingContext2D) {
+        this.ctx = ctx;
+    }
 
-export const setIntervalMS = (ms: number) => intervalMS = ms;
+    addElement(element: DrawableElement) {
+        this.elements.push(element);
+    }
 
-export function setContext(ctx: CanvasRenderingContext2D, offsetX: number, offsetY: number, render: () => void) {
-    Context.ctx = ctx;
-    Context.offsetX = offsetX;
-    Context.offsetY = offsetY;
-    Context.Render = render;
-}
+    dropAllElements() {
+        this.elements = [];
+        this.clear();
+    }
 
-export function setZoom(deltaZoom: number) {
-    if (Context.zoom + deltaZoom < 0.1) return ;
-    Context.zoom += deltaZoom;
-}
+    replaceElements(...elements: DrawableElement[]) {
+        this.elements = elements;
+        this.render();
+    }
 
-export function getZoom() {
-    return Context.zoom;
+    draw() {
+        this.elements.forEach((element) => element.draw(this));
+    }
+
+    clear() {
+        this.ctx?.clearRect(0, 0, this.ctx.canvas.width, this.ctx.canvas.height);
+    }
+
+    render() {
+        this.clear();
+        this.draw();
+    }
+
+    setZoom(deltaZoom: number) {
+        if (this.zoom + deltaZoom < 0.1) return ;
+        this.zoom += deltaZoom;
+    }
+
+    setOffset(offsetX: number, offsetY: number) {
+        this.offsetX = offsetX;
+        this.offsetY = offsetY;
+    }
+
+    setIntervalMs(intervalMS: number) {
+        this.intervalMS = intervalMS;
+    }
+
+    getZoom() {
+        return this.zoom;
+    }
+
+    getContext() {
+        return this.ctx;
+    }
+
+    getOffset() {
+        return [ this.offsetX, this.offsetY ];
+    }
+
+    wrapGenerator(generator: Generator<Node, Node | null, any>) {
+        const wait = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+        
+        Promise.resolve().then(async () => {
+            let res: IteratorResult<Node, Node | null> ;
+            let prevNode = undefined;
+            while (res = generator.next()) {
+                if (prevNode) prevNode.setHightlight(this, false);
+                prevNode = res.value;
+                if (prevNode) prevNode.setHightlight(this, true);
+                if (res.done) {
+                    // Needs to trigger a full re-render so position-color-size information flows down from the parent structures
+                    // There's probably a better way to achieve this...
+                    // (Only required on insert)
+                    this.render();
+    
+                    await wait(this.intervalMS);
+                    break ;
+                }
+                await wait(this.intervalMS);
+            }
+            res?.value?.setHightlight(this, false);
+            // Needs to trigger a full re-render so removed nodes are not drawn
+            // (Only required on remove)
+            this.render();
+        });
+    }
 }
 
 export abstract class DrawableElement {
@@ -33,7 +99,7 @@ export abstract class DrawableElement {
     protected color: string = '';
     protected highlight: boolean = false;
 
-    abstract draw(): DrawableElement;
+    abstract draw(canvas: Canvas): DrawableElement;
 
     setDefaultDrawAttributes() {
         this.setPos(0, 0);
@@ -58,39 +124,58 @@ export abstract class DrawableElement {
         return this;
     }
 
-    setHightlight(bool: boolean) {
+    setHightlight(canvas: Canvas, bool: boolean) {
         this.highlight = bool;
-        this.draw();
+        this.draw(canvas);
         return this;
     }
 
-    static drawArrow(fromx: number, fromy: number, tox: number, toy: number, fromSize: number, toSize: number) {
-        if (Context.ctx) {
-            fromx *= Context.zoom;
-            fromy *= Context.zoom;
-            tox *= Context.zoom;
-            toy *= Context.zoom;
-            fromSize *= Context.zoom;
-            toSize *= Context.zoom;
+    static drawArrow(Canvas: Canvas, fromx: number, fromy: number, tox: number, toy: number, fromSize: number, toSize: number) {
+        if (Canvas && Canvas.getContext()) {
+            const zoom = Canvas.getZoom();
+            const ctx = Canvas.getContext()!;
+            const [ offsetX, offsetY ] = Canvas.getOffset();
 
-            Context.ctx.strokeStyle = 'rgb(0, 0, 0)';
+            fromx *= zoom;
+            fromy *= zoom;
+            tox *= zoom;
+            toy *= zoom;
+            fromSize *= zoom;
+            toSize *= zoom;
+
+            ctx.strokeStyle = 'rgb(0, 0, 0)';
             const diffX = tox - fromx;
             const diffY = toy - fromy;
             
             if (Math.abs(diffX) < 0.001) {
                 if (diffY > 0) {
-                    canvasArrow(Context.ctx, fromx + fromSize / 2 + Context.offsetX, fromy + fromSize + Context.offsetY, tox + toSize / 2 + Context.offsetX, toy + Context.offsetY);
+                    this.canvasArrow(ctx, fromx + fromSize / 2 + offsetX, fromy + fromSize + offsetY, tox + toSize / 2 + offsetX, toy + offsetY);
                 } else {
-                    canvasArrow(Context.ctx, fromx + fromSize / 2 + Context.offsetX, fromy + Context.offsetY, tox + toSize / 2 + Context.offsetX, toy + toSize + Context.offsetY);
+                    this.canvasArrow(ctx, fromx + fromSize / 2 + offsetX, fromy + offsetY, tox + toSize / 2 + offsetX, toy + toSize + offsetY);
                 }
             } else {
                 if (diffX > 0) {
-                    canvasArrow(Context.ctx, fromx + fromSize + Context.offsetX, fromy + fromSize / 2 + Context.offsetY, tox + Context.offsetX, toy + toSize / 2 + Context.offsetY);
+                    this.canvasArrow(ctx, fromx + fromSize + offsetX, fromy + fromSize / 2 + offsetY, tox + offsetX, toy + toSize / 2 + offsetY);
                 } else {
-                    canvasArrow(Context.ctx, fromx + Context.offsetX, fromy + fromSize / 2 + Context.offsetY, tox + toSize + Context.offsetX, toy + toSize / 2 + Context.offsetY);
+                    this.canvasArrow(ctx, fromx + offsetX, fromy + fromSize / 2 + offsetY, tox + toSize + offsetX, toy + toSize / 2 + offsetY);
                 }
             }
         }
+    }
+
+    // https://stackoverflow.com/a/6333775
+    protected static canvasArrow(context: CanvasRenderingContext2D, fromx: number, fromy: number, tox: number, toy: number) {
+        context.beginPath();
+        const headlen = 10; // length of head in pixels
+        const dx = tox - fromx;
+        const dy = toy - fromy;
+        const angle = Math.atan2(dy, dx);
+        context.moveTo(fromx, fromy);
+        context.lineTo(tox, toy);
+        context.lineTo(tox - headlen * Math.cos(angle - Math.PI / 6), toy - headlen * Math.sin(angle - Math.PI / 6));
+        context.moveTo(tox, toy);
+        context.lineTo(tox - headlen * Math.cos(angle + Math.PI / 6), toy - headlen * Math.sin(angle + Math.PI / 6));
+        context.stroke();
     }
 }
 
@@ -106,7 +191,7 @@ export abstract class Structure extends DrawableElement {
      */
     abstract remove(...vals: any[]): Generator<Node, Node | null>;
     abstract search(...vals: any[]): Generator<Node, Node | null>;
-    abstract getActions(): { name: string, action: (...vals: any[]) => void }[];
+    abstract getActions(canvas: Canvas): { name: string, action: (...vals: any[]) => void }[];
     abstract applyToElements(fn : (elem: DrawableElement) => void): void;
 
     setDisplay(display: Display): Structure {
@@ -159,37 +244,41 @@ export class Node extends DrawableElement {
         return this;
     }
 
-    draw() {
-        if (!Context.ctx) return this;
-        const x = this.x * Context.zoom;
-        const y = this.y * Context.zoom;
-        const size = this.size * Context.zoom;
+    draw(Canvas: Canvas) {
+        if (!Canvas || !Canvas.getContext()) return this;
+        const zoom = Canvas.getZoom();
+        const ctx = Canvas.getContext()!;
+        const [ offsetX, offsetY ] = Canvas.getOffset();
 
-        Context.ctx.fillStyle = this.color || 'rgb(255, 0, 255)';
-        Context.ctx.strokeStyle = this.highlight ? 'rgb(255,0,0)' : Context.ctx.fillStyle;
-        Context.ctx.lineWidth = 3;
+        const x = this.x * zoom;
+        const y = this.y * zoom;
+        const size = this.size * zoom;
+
+        ctx.fillStyle = this.color || 'rgb(255, 0, 255)';
+        ctx.strokeStyle = this.highlight ? 'rgb(255,0,0)' : ctx.fillStyle;
+        ctx.lineWidth = 3;
 
         if (this.type === NodeType.CIRCULAR) {
-            Context.ctx.beginPath();
-            Context.ctx.arc(x + size / 2 + Context.offsetX, y + size / 2 + Context.offsetY, size / 2, 0, 2 * Math.PI);
-            Context.ctx.fill();
-            Context.ctx.stroke();
+            ctx.beginPath();
+            ctx.arc(x + size / 2 + offsetX, y + size / 2 + offsetY, size / 2, 0, 2 * Math.PI);
+            ctx.fill();
+            ctx.stroke();
         } else if (this.type === NodeType.RECTANGULAR) {
-            Context.ctx.fillRect(x + Context.offsetX, y + Context.offsetY, size, size);
-            Context.ctx.strokeRect(x + Context.offsetX, y + Context.offsetY, size, size);
+            ctx.fillRect(x + offsetX, y + offsetY, size, size);
+            ctx.strokeRect(x + offsetX, y + offsetY, size, size);
         }
 
-        Context.ctx.fillStyle = 'rgb(255, 255, 255)';
-        Context.ctx.textAlign = 'center';
-        Context.ctx.textBaseline = 'middle';
-        Context.ctx.font = `${Math.ceil(20 * Context.zoom * 10) / 10}px Arial`;
-        Context.ctx.fillText(this.toString(), x + size / 2 + Context.offsetX, y + size / 2 + Context.offsetY);
+        ctx.fillStyle = 'rgb(255, 255, 255)';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.font = `${Math.ceil(20 * zoom * 10) / 10}px Arial`;
+        ctx.fillText(this.toString(), x + size / 2 + offsetX, y + size / 2 + offsetY);
         return this;
     }
 
-    drawPointerToNext() {
+    drawPointerToNext(canvas: Canvas) {
         if (this.next) {
-            Node.drawArrow(this.x, this.y, this.next.x, this.next.y, this.size, this.next.size);
+            Node.drawArrow(canvas, this.x, this.y, this.next.x, this.next.y, this.size, this.next.size);
         }
     }
 }
@@ -212,14 +301,14 @@ export class List extends Structure {
         return list;
     }
 
-    draw() {
+    draw(canvas: Canvas) {
         let current = this.head;
         this.setPos(this.x, this.y);
         this.setSize(this.size);
         this.setColor(this.color);
         while (current) {
-            current.draw();
-            current.drawPointerToNext();
+            current.draw(canvas);
+            current.drawPointerToNext(canvas);
             current = current.next;
         }
         return this;
@@ -323,19 +412,19 @@ export class List extends Structure {
         return null;
     }
 
-    getActions() {
+    getActions(canvas: Canvas) {
         return [
             {
                 name: 'Insert',
-                action: (data: any) => wrapGenerator(this.insert(data))
+                action: (data: any) => canvas.wrapGenerator(this.insert(data))
             },
             {
                 name: 'Remove',
-                action: (data: any) => wrapGenerator(this.remove(data))
+                action: (data: any) => canvas.wrapGenerator(this.remove(data))
             },
             {
                 name: 'Search',
-                action: (data: any) => wrapGenerator(this.search(data))
+                action: (data: any) => canvas.wrapGenerator(this.search(data))
             }
         ];
     }
@@ -348,8 +437,8 @@ export class List extends Structure {
         }
     }
 
-    setHightlight(bool: boolean) {
-        this.applyToElements((elem) => elem.setHightlight(bool));
+    setHightlight(canvas: Canvas, bool: boolean) {
+        this.applyToElements((elem) => elem.setHightlight(canvas, bool));
         return this;
     }
 }
@@ -398,19 +487,19 @@ export class Queue extends List {
         return null;
     }
 
-    getActions(): { name: string; action: (data: any) => void; }[] {
+    getActions(canvas: Canvas): { name: string; action: (data: any) => void; }[] {
         return [
             {
                 name: 'Insert (last)',
-                action: (data: any) => wrapGenerator(this.insert(data))
+                action: (data: any) => canvas.wrapGenerator(this.insert(data))
             },
             {
                 name: 'Remove (first)',
-                action: () => wrapGenerator(this.remove())
+                action: () => canvas.wrapGenerator(this.remove())
             },
             {
                 name: 'Search',
-                action: (data: any) => wrapGenerator(this.search(data))
+                action: (data: any) => canvas.wrapGenerator(this.search(data))
             }
         ];
     }
@@ -462,19 +551,19 @@ export class Stack extends List {
         return null;
     }
 
-    getActions(): { name: string; action: (data: any) => void; }[] {
+    getActions(canvas: Canvas): { name: string; action: (data: any) => void; }[] {
         return [
             {
                 name: 'Insert (first)',
-                action: (data: any) => wrapGenerator(this.insert(data))
+                action: (data: any) => canvas.wrapGenerator(this.insert(data))
             },
             {
                 name: 'Remove (first)',
-                action: () => wrapGenerator(this.remove())
+                action: () => canvas.wrapGenerator(this.remove())
             },
             {
                 name: 'Search',
-                action: (data: any) => wrapGenerator(this.search(data))
+                action: (data: any) => canvas.wrapGenerator(this.search(data))
             }
         ];
     }
@@ -486,9 +575,9 @@ export class Composed extends Structure {
         super();
     }
 
-    draw() {
+    draw(canvas: Canvas) {
         this.setDefaultDrawAttributes();
-        this.head?.draw();
+        this.head?.draw(canvas);
         this.head?.applyToElements(elem => {
             if (!(elem instanceof Node && elem.value instanceof Structure)) return ;
 
@@ -499,8 +588,8 @@ export class Composed extends Structure {
             if (this.head instanceof List && elem.value instanceof List)
                 elem.value.setNodeType(this.head.nodeType == NodeType.CIRCULAR ? NodeType.RECTANGULAR : NodeType.CIRCULAR);
 
-            Composed.drawArrow(elem.x, elem.y, elem.value.x, elem.value.y, this.size, elem.size);
-            elem.value.draw();
+            Composed.drawArrow(canvas, elem.x, elem.y, elem.value.x, elem.value.y, this.size, elem.size);
+            elem.value.draw(canvas);
         });
         return this;
     }
@@ -551,11 +640,11 @@ export class Composed extends Structure {
         return yield * aux.value.insert(value, null);
     }
 
-    getActions(): { name: string; action: (...vals: any[]) => void; }[] {
+    getActions(canvas: Canvas): { name: string; action: (...vals: any[]) => void; }[] {
         return [
-            { name: 'Insert', action: (...vals: [any, any]) => wrapGenerator(this.insert(...vals)) },
-            { name: 'Remove', action: (...vals: [any, any]) => wrapGenerator(this.remove(...vals)) },
-            { name: 'Search', action: (...vals: [any, any]) => wrapGenerator(this.search(...vals)) }
+            { name: 'Insert', action: (...vals: [any, any]) => canvas.wrapGenerator(this.insert(...vals)) },
+            { name: 'Remove', action: (...vals: [any, any]) => canvas.wrapGenerator(this.remove(...vals)) },
+            { name: 'Search', action: (...vals: [any, any]) => canvas.wrapGenerator(this.search(...vals)) }
         ];
     }
 
@@ -655,33 +744,6 @@ export function createDefaultStructure(type: StructureType, subtype?: StructureT
     }
 }
 
-function wrapGenerator(generator: Generator<Node, Node | null, any>) {
-    const wait = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
-    
-    Promise.resolve().then(async () => {
-        let res: IteratorResult<Node, Node | null> ;
-        let prevNode = undefined;
-        while (res = generator.next()) {
-            if (prevNode) prevNode.setHightlight(false);
-            prevNode = res.value;
-            if (prevNode) prevNode.setHightlight(true);
-            if (res.done) {
-                // Needs to trigger a full re-render so position-color-size information flows down from the parent structures
-                // There's probably a better way to achieve this...
-                // (Only required on insert)
-                Context.Render();
-                await wait(intervalMS);
-                break ;
-            }
-            await wait(intervalMS);
-        }
-        res?.value?.setHightlight(false);
-        // Needs to trigger a full re-render so removed nodes are not drawn
-        // (Only required on remove)
-        Context.Render();
-    });
-}
-
 function exhaustGenerator<T, R>(generator: Generator<T, R>) {
     let res: IteratorResult<T, R> ;
     while (res = generator.next()) {
@@ -690,19 +752,4 @@ function exhaustGenerator<T, R>(generator: Generator<T, R>) {
         }
     }
     return res.value;
-}
-
-// https://stackoverflow.com/a/6333775
-function canvasArrow(context: CanvasRenderingContext2D, fromx: number, fromy: number, tox: number, toy: number) {
-    context.beginPath();
-    const headlen = 10; // length of head in pixels
-    const dx = tox - fromx;
-    const dy = toy - fromy;
-    const angle = Math.atan2(dy, dx);
-    context.moveTo(fromx, fromy);
-    context.lineTo(tox, toy);
-    context.lineTo(tox - headlen * Math.cos(angle - Math.PI / 6), toy - headlen * Math.sin(angle - Math.PI / 6));
-    context.moveTo(tox, toy);
-    context.lineTo(tox - headlen * Math.cos(angle + Math.PI / 6), toy - headlen * Math.sin(angle + Math.PI / 6));
-    context.stroke();
 }
