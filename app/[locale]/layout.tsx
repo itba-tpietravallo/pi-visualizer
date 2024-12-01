@@ -10,7 +10,6 @@ import { NextIntlClientProvider } from "next-intl";
 
 // Global css
 import "../globals.css";
-import { use } from "react";
 
 export const metadata: Metadata = {
   title: "ITBA PI - Data structure visualization",
@@ -33,7 +32,7 @@ export default async function LocaleLayout({
 	params,
   }: {
 	children: React.ReactNode;
-	params: { locale: string };
+	params: Promise<{ locale: string }>;
   }) {
 	const { locale } = await params;
 	// Ensure that the incoming `locale` is valid
