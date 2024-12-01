@@ -2,7 +2,22 @@
     "title": "Visualizador de estructuras de datos",
     "buttons": {
         "speed": "Velocidad",
-        "origin": "Origen"
+        "origin": "Origin",
+        "clear": "Limpiar", 
+        "create-default": "Crear inicializado",
+        "insert": "Insert",
+        "insert-first": "Insertar (primero)",
+        "insert-last": "Insertar (ultimo)",
+        "search": "Buscar",
+        "remove": "Remover",
+        "remove-first": "Remover (primero)"
+    },
+    "data-structures": {
+        "Linked List": "Lista",
+        "Queue": "Cola",
+        "Stack": "Pila",
+        "Vector": "Vector",
+        "---": "---"
     },
     "about": {
         "abstract-data-types": "Tipos Abstractos de Datos",

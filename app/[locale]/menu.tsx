@@ -1,5 +1,6 @@
 import { ChangeEvent, Dispatch, SetStateAction, useEffect, useRef, useState } from 'react';
 import { StructureType, Structure } from './datastructures';
+import { useTranslations } from 'next-intl';
 
 export default function Menu({
     className,
@@ -24,6 +25,8 @@ export default function Menu({
     handleSelectChange?: Dispatch<SetStateAction<[StructureType, StructureType]>>,
     handleInputChange?: (input: [number, number]) => void
 }) {
+    const t = useTranslations();
+
     const [showSecondInput, setShowSecondInput] = useState(false);
     const [select1, select2] = [useRef<HTMLSelectElement>(null), useRef<HTMLSelectElement>(null)];
 
@@ -88,14 +91,14 @@ export default function Menu({
                 />
                 {
                     actions.map((action, index) => (
-                        <button key={index} className="border border-1 border-black rounded px-2" onClick={ () => action.action(inputValue1, inputValue2) }>{action.name}</button>
+                        <button key={index} className="border border-1 border-black rounded px-2" onClick={ () => action.action(inputValue1, inputValue2) }>{t(action.name)}</button>
                     ))
                 }
-                <button className="border border-1 border-black rounded px-2" onClick={() => handleButtonClick?.call(null, 'Clear')}>Clear</button>
+                <button className="border border-1 border-black rounded px-2" onClick={() => handleButtonClick?.call(null, 'Clear')}>{t('buttons.clear')}</button>
             </div>
             <div id="structure-selection" className="flex flex-row gap-x-2 m-2">
                 {/* <button className="border border-1 border-black rounded px-2" onClick={() => handleButtonClick?.call(null, 'New')}>New</button> */}
-                <button className="border border-1 border-black rounded px-2" onClick={() => handleButtonClick?.call(null, 'Default')}>Create default</button>
+                <button className="border border-1 border-black rounded px-2" onClick={() => handleButtonClick?.call(null, 'Default')}>{t('buttons.create-default')}</button>
                 <select
                     ref={select1}
                     defaultValue={dataStructureSelection[0]}
@@ -105,7 +108,7 @@ export default function Menu({
                     {
                         Object.values(StructureType)
                             .filter(a => a != StructureType.EMPTY && a != StructureType.VECTOR)
-                            .map((type) => <option key={type}>{type}</option>) 
+                            .map((type) => <option key={type} value={type}>{t(`data-structures.${type}`)}</option>) 
                     }
                 </select>
                 <select
@@ -117,7 +120,7 @@ export default function Menu({
                     {
                         Object.values(StructureType)
                         .filter(a => !(a == StructureType.VECTOR || (dataStructureSelection[0] != StructureType.LIST && a != StructureType.EMPTY)))
-                        .map((type) => <option key={type}>{type}</option>) 
+                        .map((type) => <option key={type} value={type}>{t(`data-structures.${type}`)}</option>) 
                     }
                 </select>
             </div>
