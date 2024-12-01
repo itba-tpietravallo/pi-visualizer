@@ -1,0 +1,24 @@
+{
+    "title": "Visualizador de estructuras de datos",
+    "buttons": {
+        "speed": "Velocidad",
+        "origin": "Origen"
+    },
+    "about": {
+        "abstract-data-types": "Tipos Abstractos de Datos",
+        "abstract-data-types-description": "Los Tipos Abstractos de Datos (TADs) son una herramienta que permite definir una estructura de datos en términos de las operaciones que pueden realizarse sobre esta, sin especificar o revelar cómo estas están implementadas. Esto permite una clara separación entre la interfaz y la implementación de la estructura de datos.",
+        "abstract-data-types-note": "<important>Importante</important>: Esto no muestra todos los posibles TADs/tipos concretos, solo algunas de las estructuras principales (a nivel superficial). En una implementación real probablemente se incluirían campos para preservar el tamaño o permitir la iteración.",
+        "abstract-data-types-pdf-guide": "<pdf>PDF con dibujos y notas</pdf>",
+        "visualization": "Visualización",
+        "visualization-description": "Aquí puedes visualizar el comportamiento de algunas de las estructuras de datos más comunes. Puedes crear nuevas instancias, realizar operaciones sobre ellas y observar cómo cambian en tiempo real.",
+        "visualization-available-actions": "Algunas operaciones están disponibles en todas las estructuras de datos, como Buscar. Otras pueden ver su comportamiento alterado (por ejemplo, una Lista puede `insertar`, pero una Cola solo `insertar-al-final`). Las operaciones que se muestran en el menú corresponderán a los tipos de datos seleccionados."
+    },
+    "other-languages": {
+        "see-lang-version": "Ver esta pagina en",
+        "languages": {
+            "english": "English"
+        },
+        "english-link": "/en"
+    },
+    "created-by": "Creado como una herramienta visual para el curso de Programación Imperativa del ITBA (72.31)."
+}

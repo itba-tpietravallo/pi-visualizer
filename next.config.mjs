@@ -1,18 +1,23 @@
+import createNextIntlPlugin from 'next-intl/plugin';
+
+
 const cspHeader = `
-    default-src 'self';
-    script-src 'self' 'unsafe-eval' 'unsafe-inline';
-    style-src 'self' 'unsafe-inline';
-    img-src 'self' blob: data:;
-    font-src 'self';
-    object-src 'none';
-    base-uri 'self';
-    form-action 'self';
-	frame-src 'self' https://tomaspietravallo.com;
-    frame-ancestors https://tomaspietravallo.com;
+default-src 'self';
+script-src 'self' 'unsafe-eval' 'unsafe-inline';
+style-src 'self' 'unsafe-inline';
+img-src 'self' blob: data:;
+font-src 'self';
+object-src 'none';
+base-uri 'self';
+form-action 'self';
+frame-src 'self' https://tomaspietravallo.com;
+frame-ancestors https://tomaspietravallo.com;
 `
 
+const withNextIntl = createNextIntlPlugin();
+
 /** @type {import('next').NextConfig} */
-export default {
+export default withNextIntl({
     pageExtensions: ['js', 'jsx', 'ts', 'tsx', 'mdx'],
 	async headers() {
 		return [
@@ -28,4 +33,4 @@ export default {
 	devIndicators: {
 		appIsrStatus: false
 	}
-}
+})
