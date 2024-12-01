@@ -1,3 +1,5 @@
+export const runtime = 'edge';
+
 // Fonts and metadata
 import type { Metadata, Viewport } from "next";
 import { Inter } from 'next/font/google'
