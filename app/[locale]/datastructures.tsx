@@ -326,15 +326,15 @@ export class List extends Structure {
     getActions() {
         return [
             {
-                name: 'Insert',
+                name: 'buttons.insert',
                 action: (data: any) => wrapGenerator(this.insert(data))
             },
             {
-                name: 'Remove',
+                name: 'buttons.remove',
                 action: (data: any) => wrapGenerator(this.remove(data))
             },
             {
-                name: 'Search',
+                name: 'buttons.search',
                 action: (data: any) => wrapGenerator(this.search(data))
             }
         ];
@@ -401,15 +401,15 @@ export class Queue extends List {
     getActions(): { name: string; action: (data: any) => void; }[] {
         return [
             {
-                name: 'Insert (last)',
+                name: 'buttons.insert-last',
                 action: (data: any) => wrapGenerator(this.insert(data))
             },
             {
-                name: 'Remove (first)',
+                name: 'buttons.remove-first',
                 action: () => wrapGenerator(this.remove())
             },
             {
-                name: 'Search',
+                name: 'buttons.search',
                 action: (data: any) => wrapGenerator(this.search(data))
             }
         ];
@@ -465,11 +465,11 @@ export class Stack extends List {
     getActions(): { name: string; action: (data: any) => void; }[] {
         return [
             {
-                name: 'Insert (first)',
+                name: 'buttons.insert-first',
                 action: (data: any) => wrapGenerator(this.insert(data))
             },
             {
-                name: 'Remove (first)',
+                name: 'buttons.remove-first',
                 action: () => wrapGenerator(this.remove())
             },
             {
@@ -553,9 +553,9 @@ export class Composed extends Structure {
 
     getActions(): { name: string; action: (...vals: any[]) => void; }[] {
         return [
-            { name: 'Insert', action: (...vals: [any, any]) => wrapGenerator(this.insert(...vals)) },
-            { name: 'Remove', action: (...vals: [any, any]) => wrapGenerator(this.remove(...vals)) },
-            { name: 'Search', action: (...vals: [any, any]) => wrapGenerator(this.search(...vals)) }
+            { name: 'buttons.insert', action: (...vals: [any, any]) => wrapGenerator(this.insert(...vals)) },
+            { name: 'buttons.remove', action: (...vals: [any, any]) => wrapGenerator(this.remove(...vals)) },
+            { name: 'buttons.search', action: (...vals: [any, any]) => wrapGenerator(this.search(...vals)) }
         ];
     }
 
