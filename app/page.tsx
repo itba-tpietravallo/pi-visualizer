@@ -36,6 +36,9 @@ export default function Home() {
 		function handleMouseDown(e: MouseEvent) {
 			setIsDragging(true);
 			startDragOffset.current = { x: e.clientX - origin.x, y: e.clientY - origin.y };
+			const bb = canvasRef.current?.getBoundingClientRect();
+			if (!bb) return;
+			canvas.checkIntersection((e.clientX - bb.left), (e.clientY - bb.top));
 		}
 
 		function handleMouseMove(e: MouseEvent) {

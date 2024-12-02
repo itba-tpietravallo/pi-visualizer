@@ -90,6 +90,28 @@ export class Canvas {
             this.render();
         });
     }
+
+    // Tests for a hit against any drawn element
+    // Coordinates for the test are 0-width, 0-height in canvas space
+    checkIntersection(x: number, y: number) {
+        const zoom = this.getZoom();
+        const [ offsetX, offsetY ] = this.getOffset();
+
+        const elements = this.elements;
+        for (let i = 0; i < elements.length; i++) {
+            const elem = elements[i];
+            const size = elem.size * zoom;
+            const elemX = elem.x * zoom + offsetX;
+            const elemY = elem.y * zoom + offsetY;
+
+            // @todo Support circular nodes/ arbitrary bounding boxes defined by each DrawableElement
+            if (x >= elemX && x <= elemX + size && y >= elemY && y <= elemY + size) {
+                console.log('Intersection with element:', elem);
+                return elem;
+            }
+        }
+        return null;
+    }
 }
 
 export abstract class DrawableElement {
