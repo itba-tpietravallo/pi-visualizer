@@ -18,8 +18,9 @@ export function setContext(ctx: CanvasRenderingContext2D, offsetX: number, offse
 }
 
 export function setZoom(deltaZoom: number) {
-    if (Context.zoom + deltaZoom < 0.1) return ;
+    if (Context.zoom + deltaZoom < 0.1) return false;
     Context.zoom += deltaZoom;
+    return true;
 }
 
 export function getZoom() {

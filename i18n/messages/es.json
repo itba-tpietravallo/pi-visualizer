@@ -2,7 +2,7 @@
     "title": "Visualizador de estructuras de datos",
     "buttons": {
         "speed": "Velocidad",
-        "origin": "Origin",
+        "origin": "Origen",
         "clear": "Limpiar", 
         "create-default": "Crear inicializado",
         "insert": "Insert",

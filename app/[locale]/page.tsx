@@ -68,10 +68,12 @@ export default function Home() {
 			if (e.clientX >= rect.left && e.clientX <= rect.right && e.clientY >= rect.top && e.clientY <= rect.bottom)
 				e.preventDefault();
 
-			const x = (rect.left - e.clientX) + origin.x;
-			const y = (rect.top - e.clientY)  + origin.y;
-			setZoom(delta);
-			setOrigin({ x: origin.x + x * delta, y: origin.y + y * delta });
+			const x = (e.clientX - rect.left) - origin.x;
+			const y = (e.clientY - rect.top)  - origin.y;
+
+			if (setZoom(delta))
+				setOrigin({ x: origin.x - x * delta, y: origin.y - y * delta });
+			
 			startZoom.current = s;
 			Render(canvasRef.current!, canvasRef.current!.getContext('2d')!);
 		}
@@ -197,7 +199,7 @@ export default function Home() {
 						<p className="inline-block w-[120px]">{ t('buttons.speed') }: {Math.round((speed))}%</p>
 						<input className="inline-block" type="range" min="10" max="100" defaultValue={speed} onChange={(e) => setSpeed(e.target.valueAsNumber) } />
 					</div>
-					<p className="w-fit">{ t('buttons.origin') }. x: {origin.x}, y: {origin.y}</p>
+					<p className="w-fit">{ t('buttons.origin') }. x: {Math.round(origin.x)}, y: {Math.round(origin.y)}</p>
 				</div>
 			</div>
 
