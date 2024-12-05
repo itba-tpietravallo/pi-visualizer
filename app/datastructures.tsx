@@ -100,13 +100,13 @@ export class Canvas {
         const elements = this.elements;
         for (let i = 0; i < elements.length; i++) {
             const elem = elements[i];
-            const size = elem.size * zoom;
-            const elemX = elem.x * zoom + offsetX;
-            const elemY = elem.y * zoom + offsetY;
+            const elemX = (x - offsetX) / zoom;
+            const elemY = (y - offsetY) / zoom;
 
-            // @todo Support circular nodes/ arbitrary bounding boxes defined by each DrawableElement
-            if (x >= elemX && x <= elemX + size && y >= elemY && y <= elemY + size) {
-                console.log('Intersection with element:', elem);
+            let drawable: DrawableElement | false;
+            if (drawable = elem.checkIntersection(elemX, elemY)) {
+                console.log('Intersection with element:', drawable);
+                drawable.setHightlight(this, !drawable.getHighlight());
                 return elem;
             }
         }
@@ -122,6 +122,8 @@ export abstract class DrawableElement {
     protected highlight: boolean = false;
 
     abstract draw(canvas: Canvas): DrawableElement;
+
+    abstract checkIntersection(x: number, y: number): false | DrawableElement;
 
     setDefaultDrawAttributes() {
         this.setPos(0, 0);
@@ -150,6 +152,10 @@ export abstract class DrawableElement {
         this.highlight = bool;
         this.draw(canvas);
         return this;
+    }
+
+    getHighlight() {
+        return this.highlight;
     }
 
     static drawArrow(Canvas: Canvas, fromx: number, fromy: number, tox: number, toy: number, fromSize: number, toSize: number) {
@@ -303,6 +309,19 @@ export class Node extends DrawableElement {
             Node.drawArrow(canvas, this.x, this.y, this.next.x, this.next.y, this.size, this.next.size);
         }
     }
+
+    checkIntersection(x: number, y: number) {
+        switch (this.type) {
+            case NodeType.CIRCULAR:
+                const dx = x - (this.x + this.size / 2);
+                const dy = y - (this.y + this.size / 2);
+                return (dx * dx + dy * dy <= this.size * this.size / 4 ? this : false);
+            case NodeType.RECTANGULAR:
+                return (x >= this.x && x <= this.x + this.size && y >= this.y && y <= this.y + this.size) ? this : false; 
+            default:
+                throw new Error("Invalid NodeType used on checkIntersection");
+        }
+    }
 }
 
 export class List extends Structure {
@@ -369,6 +388,17 @@ export class List extends Structure {
         this.nodeType = type;
         this.applyToElements(elem => elem.setType(type));
         return this;
+    }
+
+    checkIntersection(x: number, y: number) {
+        let current = this.head;
+        while (current) {
+            if (current.checkIntersection(x, y)) {
+                return current;
+            }
+            current = current.next;
+        }
+        return false;
     }
 
     * insert(data: any, value: any = null) {
@@ -640,6 +670,11 @@ export class Composed extends Structure {
         super.setSize(size);
         this.applyToElements(e => e.setSize(size));
         return this;
+    }
+
+    checkIntersection(x: number, y: number): false | DrawableElement {
+        // @todo Not implemented
+        return false;
     }
 
     * insert(key: any, value: any) {
