@@ -63,6 +63,20 @@ export class Canvas {
         return [ this.offsetX, this.offsetY ];
     }
 
+    preserveSettings() {
+        return [ this.ctx?.font, this.ctx?.fillStyle, this.ctx?.strokeStyle, this.ctx?.lineWidth, this.ctx?.textAlign, this.ctx?.textBaseline ] as const;
+    }
+
+    restoreSettings(values: ReturnType<Canvas["preserveSettings"]>) {
+        if (!this.ctx) return ;
+        this.ctx.font = values[0]!;
+        this.ctx.fillStyle = values[1]!;
+        this.ctx.strokeStyle = values[2]!;
+        this.ctx.lineWidth = values[3]!;
+        this.ctx.textAlign = values[4]!;
+        this.ctx.textBaseline = values[5]!;
+    }
+
     wrapGenerator(generator: Generator<Node, Node | null, any>) {
         const wait = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
         
@@ -231,8 +245,11 @@ export enum StructureType {
     LIST = 'Linked List',
     QUEUE = 'Queue',
     STACK = 'Stack',
-    VECTOR = 'Vector',
-    EMPTY = '---'
+    VECTOR = 'Vector', // this value is filtered in the page.tsx front and not shown as an option (not implemented)
+    LISTADT = 'ListADT',
+    QUEUEADT = 'QueueADT',
+    STACKADT = 'StackADT',
+    EMPTY = '---',
 }
 
 export enum Display {
@@ -268,6 +285,9 @@ export class Node extends DrawableElement {
 
     draw(Canvas: Canvas) {
         if (!Canvas || !Canvas.getContext()) return this;
+
+        const prev = Canvas.preserveSettings();
+
         const zoom = Canvas.getZoom();
         const ctx = Canvas.getContext()!;
         const [ offsetX, offsetY ] = Canvas.getOffset();
@@ -295,6 +315,9 @@ export class Node extends DrawableElement {
         ctx.textBaseline = 'middle';
         ctx.font = `${Math.ceil(20 * zoom * 10) / 10}px Arial`;
         ctx.fillText(this.toString(), x + size / 2 + offsetX, y + size / 2 + offsetY);
+
+        Canvas.restoreSettings(prev);
+
         return this;
     }
 
@@ -728,6 +751,262 @@ export class Composed extends Structure {
     }
 }
 
+export abstract class ADT extends Structure {
+    title: string = 'ADT Title';
+    structure: Structure | null = null;
+    protected drawStructure = false;
+
+    constructor() {
+        super();
+    }
+    
+    getActions(canvas: Canvas): { name: string; action: (...vals: any[]) => void; }[] {
+        return this.structure?.getActions(canvas)!;
+    }
+
+    getFields(): { label: string, value: string | DrawableElement }[] {
+        return [];
+    }
+    
+    applyToElements(fn: (elem: DrawableElement) => void) {
+        this.structure?.applyToElements(fn);
+    }
+
+    setDefaultDrawAttributes() {
+        super.setDefaultDrawAttributes();
+        this.size = 200;
+        return this;
+    }
+
+    drawContainer(canvas: Canvas, x: number, y: number, width: number, height: number, title: string) {
+        const ctx = canvas.getContext()!;
+        const zoom = canvas.getZoom();
+        // Draw the main rectangle
+        ctx.strokeStyle = 'black';
+        ctx.lineWidth = 2;
+        ctx.strokeRect(x, y, width * zoom, height * zoom);
+  
+        // Draw the title
+        ctx.font = `${18 * zoom}px Arial`;
+        ctx.fillStyle = 'black';
+        ctx.textAlign = 'center';
+        ctx.fillText(title, x + width * zoom / 2, y + 25 * zoom);
+    }
+
+    drawField(canvas: Canvas, x: number, y: number, width: number, height: number, label: string, value: string | DrawableElement) {
+        const prev = canvas.preserveSettings();
+        const ctx = canvas.getContext()!;
+        const zoom = canvas.getZoom();
+        const [ offsetX, offsetY ] = canvas.getOffset();
+        const transformedX = x * zoom + offsetX;
+        const transformedY = y * zoom + offsetY;
+        height *= zoom;
+        width *= zoom;
+        const padding = 5 * zoom;
+        // Draw the field rectangle
+        ctx.fillStyle = '#e0e0e0';
+        ctx.fillRect(transformedX, transformedY, width, height);
+  
+        ctx.strokeStyle = 'black';
+        ctx.lineWidth = 1;
+        ctx.strokeRect(transformedX, transformedY, width, height);
+  
+        // Draw the label and value
+        ctx.font = `${14 * zoom}px Arial`;
+        ctx.fillStyle = 'black';
+        ctx.textAlign = 'left';
+        ctx.fillText(`${label}:`, transformedX + padding, transformedY + height / 2 + padding);
+  
+        ctx.textAlign = 'right';
+
+        if (value instanceof DrawableElement) {
+            ctx.font = `${35 * zoom}px Arial`;
+            ctx.textBaseline = 'middle';
+            ctx.fillText('*', transformedX + width - padding, transformedY + height / 2 + padding * 1.5);
+            if (value instanceof Structure) {
+                if (this.drawStructure) {
+                    value.setPos(x + 225, y - 10);
+                    value.setSize(50);
+                    Node.drawArrow(canvas, x + width / zoom - 30, y, value.x, value.y, height / zoom, value.size);
+                    value.draw(canvas);
+                };
+            } else if (value instanceof Node) {
+                Node.drawArrow(canvas, x + width / zoom - 30, y, value.x, value.y, height / zoom, value.size);
+            } else {
+                ctx.fillText('NOT IMPLEMENTED', transformedX + width - padding, transformedY + height / 2 + padding);
+            }
+        } else {
+            ctx.fillText(value, transformedX + width - padding, transformedY + height / 2 + padding);
+        }
+
+        canvas.restoreSettings(prev);
+    }
+
+    draw(canvas: Canvas) {
+        const prev = canvas.preserveSettings();
+
+        const [ offsetX, offsetY ] = canvas.getOffset();
+        const zoom = canvas.getZoom();
+        const x = this.x;
+        const y = this.y;
+
+        const fields = this.getFields();
+
+        const fieldHeight = 30; // Height of each field
+        const padding = 10; // Padding around the content
+  
+        // Calculate the height of the main rectangle based on fields
+        const height = 50 + fields.length * (fieldHeight + 5);
+  
+        // Draw the main rectangle
+        this.drawContainer(canvas, x * zoom + offsetX, y * zoom + offsetY, this.size, height, this.title);
+  
+        // Draw each field inside the main rectangle
+        let currentY = y + 40; // Starting position for fields
+        
+        fields.forEach(field => {
+            this.drawField(canvas, x + padding, currentY, this.size - 2 * padding, fieldHeight, field.label, field.value);
+            currentY += fieldHeight + 5;
+        });
+
+        canvas.restoreSettings(prev);
+
+        return this;
+    } 
+}
+
+export class ListADT extends ADT {
+    protected type: StructureType = StructureType.LISTADT;
+    protected elemCount = 0;
+
+    constructor() {
+        super();
+        this.title = 'ListADT';
+        this.structure = new List().setDefaultDrawAttributes();
+    }
+
+    getFields() {
+        return [
+            { label: 'elems', value: this.structure! },
+            { label: 'size', value: this.elemCount.toString() },
+            { label: 'iter', value: null } as any
+        ];
+    }
+
+    getActions(canvas: Canvas) {
+        return [
+            {
+                name: 'buttons.insert',
+                action: (data: any) => canvas.wrapGenerator(this.insert(data))
+            },
+            {
+                name: 'buttons.remove',
+                action: (data: any) => canvas.wrapGenerator(this.remove(data))
+            },
+            {
+                name: 'buttons.search',
+                action: (data: any) => canvas.wrapGenerator(this.search(data))
+            },
+        ];
+    }
+
+    * insert(data: any, value: any = null) {
+        this.drawStructure = true;
+        const node = yield * this.structure!.insert(data, value);
+        this.elemCount++;
+        return node;
+    }
+
+    * remove(data?: any) {
+        const node = yield * this.structure!.remove(data);
+        this.elemCount--;
+        if (this.elemCount == 0) this.drawStructure = false
+        return node;
+    }
+
+    * search(data: any) {
+        return yield * this.structure!.search(data);
+    }
+
+    static ofLength(length: number) {
+        const list = new ListADT();
+        for (let i = 0; i < length; i++) {
+            exhaustGenerator(list.insert(i));
+        }
+        return list;
+    }
+}
+
+export class QueueADT extends ListADT {
+    protected type: StructureType = StructureType.QUEUEADT;
+
+    constructor() {
+        super();
+        this.title = 'QueueADT';
+        this.structure = new Queue().setDefaultDrawAttributes();
+    }
+
+    getActions(canvas: Canvas): { name: string; action: (data: any) => void; }[] {
+        return [
+            {
+                name: 'buttons.insert-last',
+                action: (data: any) => canvas.wrapGenerator(this.insert(data))
+            },
+            {
+                name: 'buttons.remove-first',
+                action: () => canvas.wrapGenerator(this.remove())
+            },
+            {
+                name: 'buttons.search',
+                action: (data: any) => canvas.wrapGenerator(this.search(data))
+            }
+        ];
+    }
+
+    static ofLength(length: number) {
+        const queue = new QueueADT();
+        for (let i = 0; i < length; i++) {
+            exhaustGenerator(queue.insert(i));
+        }
+        return queue;
+    }
+}
+
+export class StackADT extends ListADT {
+    protected type: StructureType = StructureType.STACKADT;
+
+    constructor() {
+        super();
+        this.title = 'StackADT';
+        this.structure = new Stack().setDefaultDrawAttributes();
+    }
+
+    getActions(canvas: Canvas): { name: string; action: (data: any) => void; }[] {
+        return [
+            {
+                name: 'buttons.insert-first',
+                action: (data: any) => canvas.wrapGenerator(this.insert(data))
+            },
+            {
+                name: 'buttons.remove-first',
+                action: () => canvas.wrapGenerator(this.remove())
+            },
+            {
+                name: 'buttons.search',
+                action: (data: any) => canvas.wrapGenerator(this.search(data))
+            }
+        ];
+    }
+
+    static ofLength(length: number) {
+        const stack = new StackADT();
+        for (let i = 0; i < length; i++) {
+            exhaustGenerator(stack.insert(i));
+        }
+        return stack;
+    }
+}
+
 export function createStructure(type: StructureType, subtype?: StructureType): Structure | undefined {
     if (subtype != undefined && subtype != StructureType.EMPTY) {
         return new Composed(type, subtype).setDefaultDrawAttributes();
@@ -740,6 +1019,12 @@ export function createStructure(type: StructureType, subtype?: StructureType): S
             return new Queue().setDefaultDrawAttributes();
         case StructureType.STACK:
             return new Stack().setDefaultDrawAttributes();
+        case StructureType.LISTADT:
+            return new ListADT().setDefaultDrawAttributes();
+        case StructureType.QUEUEADT:
+            return new QueueADT().setDefaultDrawAttributes();
+        case StructureType.STACKADT:
+            return new StackADT().setDefaultDrawAttributes();
         default:
             return undefined;
     }
@@ -761,6 +1046,12 @@ export function createDefaultStructure(type: StructureType, subtype?: StructureT
             return Queue.ofLength(3).setDefaultDrawAttributes();
         case StructureType.STACK:
             return Stack.ofLength(3).setDefaultDrawAttributes();
+        case StructureType.LISTADT:
+            return ListADT.ofLength(3).setDefaultDrawAttributes();
+        case StructureType.QUEUEADT:
+            return QueueADT.ofLength(3).setDefaultDrawAttributes();
+        case StructureType.STACKADT:
+            return StackADT.ofLength(3).setDefaultDrawAttributes();
         default:
             return undefined;
     }

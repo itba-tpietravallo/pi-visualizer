@@ -17,7 +17,10 @@
         "Queue": "Cola",
         "Stack": "Pila",
         "Vector": "Vector",
-        "---": "---"
+        "---": "---",
+        "ListADT": "ListADT",
+        "QueueADT": "QueueADT",
+        "StackADT": "StackADT"
     },
     "about": {
         "abstract-data-types": "Tipos Abstractos de Datos",

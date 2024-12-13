@@ -17,7 +17,10 @@
         "Queue": "Queue",
         "Stack": "Stack",
         "Vector": "Vector",
-        "---": "---"
+        "---": "---",
+        "ListADT": "ListADT",
+        "QueueADT": "QueueADT",
+        "StackADT": "StackADT"
     },
     "about": {
         "abstract-data-types": "Abstract Data Types",
