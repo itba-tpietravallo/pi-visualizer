@@ -4,14 +4,14 @@ import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { useMessages, useTranslations } from "next-intl";
 
 import Menu from "./menu";
-import { createDefaultStructure, createStructure, setContext, Structure, StructureType, setIntervalMS as setGeneratorPause, setZoom } from "./datastructures";
-
-let DATA_STRUCTURE: Structure | undefined;
+import { createDefaultStructure, createStructure, Structure, StructureType, Canvas } from "./datastructures";
 
 export default function Home() {
 	const canvasRef = useRef<HTMLCanvasElement>(null);
 	const startDragOffset = useRef({ x: 0, y: 0 });
 	const startZoom = useRef(1);
+
+	const canvas = useMemo(() => new Canvas(canvasRef.current?.getContext('2d')!), [canvasRef.current]);
 
 	const [ origin, setOrigin ] = useState({ x: 0, y: 0 });
 	const [ isDragging, setIsDragging ] = useState(false);
@@ -25,18 +25,21 @@ export default function Home() {
 		function updateSize() {
 			if(!canvasRef.current) return ;
 
-			const canvas = canvasRef.current;
-			canvas.width        = canvas.parentElement!.offsetWidth  * 0.95;
-			canvas.height       = canvas.parentElement!.offsetHeight * 0.95;
-			canvas.style.width  = canvas.width + 'px';
-			canvas.style.height = canvas.height + 'px';
-			setContext(canvas.getContext('2d')!, origin.x, origin.y, () => Render(canvas, canvas.getContext('2d')!));
-			Render(canvas, canvas.getContext('2d')!);
+			canvasRef.current.width        = canvasRef.current.parentElement!.offsetWidth  * 0.95;
+			canvasRef.current.height       = canvasRef.current.parentElement!.offsetHeight * 0.95;
+			canvasRef.current.style.width  = canvasRef.current.width + 'px';
+			canvasRef.current.style.height = canvasRef.current.height + 'px';
+			
+			canvas.setOffset(origin.x, origin.y);
+			canvas.render();
 		}
 
 		function handleMouseDown(e: MouseEvent) {
 			setIsDragging(true);
 			startDragOffset.current = { x: e.clientX - origin.x, y: e.clientY - origin.y };
+			const bb = canvasRef.current?.getBoundingClientRect();
+			if (!bb) return;
+			canvas.checkIntersection((e.clientX - bb.left), (e.clientY - bb.top));
 		}
 
 		function handleMouseMove(e: MouseEvent) {
@@ -68,19 +71,16 @@ export default function Home() {
 			if (e.clientX >= rect.left && e.clientX <= rect.right && e.clientY >= rect.top && e.clientY <= rect.bottom)
 				e.preventDefault();
 
-			const x = (e.clientX - rect.left) - origin.x;
-			const y = (e.clientY - rect.top)  - origin.y;
-
-			if (setZoom(delta))
-				setOrigin({ x: origin.x - x * delta, y: origin.y - y * delta });
-			
+			const x = (rect.left - e.clientX) + origin.x;
+			const y = (rect.top - e.clientY)  + origin.y;
+			canvas.setZoom(delta);
+			setOrigin({ x: origin.x + x * delta, y: origin.y + y * delta });
 			startZoom.current = s;
-			Render(canvasRef.current!, canvasRef.current!.getContext('2d')!);
+			canvas.render();
 		}
-
-		const canvas = canvasRef.current;
 		
-		if (canvas) {
+		if (canvasRef.current) {
+			const canvas = canvasRef.current;
 			canvas.addEventListener("wheel", zoom);
 			canvas.addEventListener('mousedown', handleMouseDown);
 			canvas.addEventListener("gesturestart", resetZoom);
@@ -96,6 +96,7 @@ export default function Home() {
 
 		return () => {
 			window.removeEventListener('resize', updateSize);
+			const canvas = canvasRef.current;
 			if (canvas) {
 				canvas.removeEventListener("wheel", zoom);
 				canvas.removeEventListener("gesturestart", resetZoom);
@@ -112,15 +113,14 @@ export default function Home() {
 	useEffect(() => {
 		if(!canvasRef.current) return ;
 		console.log(`Select changed to [${dataStructureSelection.toString()}]`);
-		DATA_STRUCTURE = createStructure(...dataStructureSelection)!;
-
-		setActions(DATA_STRUCTURE?.getActions() || []);
-		Render(canvasRef.current!, canvasRef.current!.getContext('2d')!);
+		const elem = createStructure(...dataStructureSelection)!;
+		canvas.replaceElements(elem);
+		setActions(elem?.getActions(canvas) || []);
 	}, [dataStructureSelection]);
 
 	useEffect(() => {
 		// 1000ms - [% to 0-1000ms range]
-		setGeneratorPause(1000 - (speed * 10));
+		canvas.setIntervalMs(1000 - (speed * 10));
 	}, [speed]);
 
 	const preventDefault = (e: Event) => e.preventDefault();
@@ -141,26 +141,23 @@ export default function Home() {
 
 	// Function to handle button clicks
 	const handleButtonClick = (action: string) => {
+		let elem: Structure | undefined;
 		switch (action) {
 			case 'New':
 			case 'Clear':
-				DATA_STRUCTURE = createStructure(...dataStructureSelection)!;
+				elem = createStructure(...dataStructureSelection)!;
 				break;
 			case 'Default':
-				DATA_STRUCTURE = createDefaultStructure(...dataStructureSelection)!;
+				elem = createDefaultStructure(...dataStructureSelection)!;
 				break;
 			default:
 			break;
 		}
 
-		setActions(DATA_STRUCTURE?.getActions() || []);
-		Render(canvasRef.current!, canvasRef.current!.getContext('2d')!);
+		setActions(elem?.getActions(canvas) || []);
+		canvas.replaceElements(elem!);
+		canvas.render();
 	};
-
-	function Render(canvas: HTMLCanvasElement, ctx: CanvasRenderingContext2D) {
-		ctx.clearRect(0, 0, canvas.width, canvas.height);
-		DATA_STRUCTURE?.draw();
-	}
 
 	const t = useTranslations();
 
