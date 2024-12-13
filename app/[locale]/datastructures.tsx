@@ -4,7 +4,7 @@ export class Canvas {
     private offsetX = 0;
     private offsetY = 0;
     private ctx: CanvasRenderingContext2D | null = null;
-    private intervalMS = 0;
+    private intervalMS = 200;
 
     constructor(ctx: CanvasRenderingContext2D) {
         this.ctx = ctx;
