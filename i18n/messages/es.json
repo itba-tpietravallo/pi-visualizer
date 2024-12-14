@@ -10,7 +10,10 @@
         "insert-last": "Insertar (ultimo)",
         "search": "Buscar",
         "remove": "Remover",
-        "remove-first": "Remover (primero)"
+        "remove-first": "Remover (primero)",
+        "pause": "Pausar",
+        "play": "Reproducir",
+        "undo": "Deshacer"
     },
     "data-structures": {
         "Linked List": "Lista",

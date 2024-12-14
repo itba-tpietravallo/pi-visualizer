@@ -5,6 +5,7 @@ export class Canvas {
     private offsetY = 0;
     private ctx: CanvasRenderingContext2D | null = null;
     private intervalMS = 200;
+    private lastTimerResolve: ((value: unknown) => void) | null = null;
 
     constructor(ctx: CanvasRenderingContext2D) {
         this.ctx = ctx;
@@ -49,6 +50,7 @@ export class Canvas {
 
     setIntervalMs(intervalMS: number) {
         this.intervalMS = intervalMS;
+        if (this.lastTimerResolve != null) this.lastTimerResolve!(null);
     }
 
     getZoom() {
@@ -78,7 +80,7 @@ export class Canvas {
     }
 
     wrapGenerator(generator: Generator<Node, Node | null, any>) {
-        const wait = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+        const wait = (ms: number) => new Promise(resolve => (this.lastTimerResolve = resolve, setTimeout(resolve, ms)));
         
         Promise.resolve().then(async () => {
             let res: IteratorResult<Node, Node | null> ;
@@ -227,8 +229,14 @@ export abstract class Structure extends DrawableElement {
      */
     abstract remove(...vals: any[]): Generator<Node, Node | null>;
     abstract search(...vals: any[]): Generator<Node, Node | null>;
+    abstract iterateElements(): Generator<DrawableElement>;
     abstract getActions(canvas: Canvas): { name: string, action: (...vals: any[]) => void }[];
-    abstract applyToElements(fn : (elem: DrawableElement) => void): void;
+
+    applyToElements(fn : (elem: DrawableElement) => void) {
+        for (const elem of this.iterateElements()) {
+            fn(elem);
+        }
+    };
 
     setDisplay(display: Display): Structure {
         this.display = display;
@@ -390,7 +398,7 @@ export class List extends Structure {
 
     setNodeType(type: NodeType) {
         this.nodeType = type;
-        this.applyToElements(elem => elem.setType(type));
+        this.applyToElements((elem) => (elem as Node).setType(type));
         return this;
     }
 
@@ -457,6 +465,15 @@ export class List extends Structure {
         return null;
     }
 
+    * iterateElements() {
+        let current = this.head;
+        while (current) {
+            yield current;
+            current = current.next;
+        }
+        return null;
+    }
+
     getActions(canvas: Canvas) {
         return [
             {
@@ -472,14 +489,6 @@ export class List extends Structure {
                 action: (data: any) => canvas.wrapGenerator(this.search(data))
             },
         ];
-    }
-
-    applyToElements(fn: (elem: Node) => void) {
-        let current = this.head;
-        while (current) {
-            fn(current);
-            current = current.next;
-        }
     }
 
     setHightlight(canvas: Canvas, bool: boolean) {
@@ -685,14 +694,6 @@ export class Composed extends Structure {
         return yield * aux.value.insert(value, null);
     }
 
-    getActions(canvas: Canvas): { name: string; action: (...vals: any[]) => void; }[] {
-        return [
-            { name: 'buttons.insert', action: (...vals: [any, any]) => canvas.wrapGenerator(this.insert(...vals)) },
-            { name: 'buttons.remove', action: (...vals: [any, any]) => canvas.wrapGenerator(this.remove(...vals)) },
-            { name: 'buttons.search', action: (...vals: [any, any]) => canvas.wrapGenerator(this.search(...vals)) }
-        ];
-    }
-
     * remove(key: any, value: any) {
         const current: Node | null = (yield * this.head!.search(key));
 
@@ -714,14 +715,21 @@ export class Composed extends Structure {
         return null;
     }
 
-    applyToElements(fn: (elem: DrawableElement) => void) {
-        if (this.head) {
-            this.head.applyToElements(fn);
-            this.head.applyToElements((elem: Node | DrawableElement) => {
-                if (elem instanceof Node && elem.value != undefined && elem.value["applyToElements"]) {
-                    elem.value.applyToElements(fn);
-                }
-            });
+    getActions(canvas: Canvas): { name: string; action: (...vals: any[]) => void; }[] {
+        return [
+            { name: 'buttons.insert', action: (...vals: [any, any]) => canvas.wrapGenerator(this.insert(...vals)) },
+            { name: 'buttons.remove', action: (...vals: [any, any]) => canvas.wrapGenerator(this.remove(...vals)) },
+            { name: 'buttons.search', action: (...vals: [any, any]) => canvas.wrapGenerator(this.search(...vals)) }
+        ];
+    }
+
+    * iterateElements() {
+        if (this.head == null) return ;
+        for (const elem of this.head.iterateElements()) {
+            yield elem;
+            if (elem instanceof Node && elem.value != undefined && elem.value instanceof Structure) {
+                yield * elem.value.iterateElements();
+            }
         }
     }
 
@@ -926,6 +934,11 @@ export class ListADT extends ADT {
 
     * search(data: any) {
         return yield * this.structure!.search(data);
+    }
+
+    * iterateElements() {
+        if (!this.structure) return ;
+        return yield * this.structure.iterateElements();
     }
 
     static ofLength(length: number) {

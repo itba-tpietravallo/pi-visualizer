@@ -15,6 +15,7 @@ export default function Home() {
 
 	const [ origin, setOrigin ] = useState({ x: 0, y: 0 });
 	const [ isDragging, setIsDragging ] = useState(false);
+	const [ paused, setPaused ] = useState(false);
 	const [ speed, setSpeed ] = useState(80); 
 	const [ inputValue1, setInputValue1 ] = useState(0);
 	const [ inputValue2, setInputValue2 ] = useState(0);
@@ -120,8 +121,11 @@ export default function Home() {
 
 	useEffect(() => {
 		// 1000ms - [% to 0-1000ms range]
-		canvas.setIntervalMs(1000 - (speed * 10));
-	}, [speed]);
+		if (!paused)
+			canvas.setIntervalMs(1000 - (speed * 10));
+		else // MDN: When `delay` is larger than `2147483647` or less than `1`, the `delay` will be set to `1`. Non-integer delays are truncated to an integer.
+			canvas.setIntervalMs(0x7FFFFFFF);
+	}, [speed, paused]);
 
 	const preventDefault = (e: Event) => e.preventDefault();
 
@@ -182,6 +186,7 @@ export default function Home() {
 					actions={actions}
 					handleButtonClick={handleButtonClick}
 					handleSelectChange={setDataStructureSelection}
+					paused={paused}
 				/>
 
 				<div className="flex flex-col justify-center items-center w-full !h-[60vh]">
@@ -191,12 +196,20 @@ export default function Home() {
 					/>
 				</div>
 
-				<div className="w-full flex flex-col items-start">
-					<div className="inline-block">
+				<div className="w-full flex flex-col gap-2 items-start">
+					<div className="inline-flex align-middle border black border-1 border-black rounded px-2">
 						<p className="inline-block w-[120px]">{ t('buttons.speed') }: {Math.round((speed))}%</p>
 						<input className="inline-block" type="range" min="10" max="100" defaultValue={speed} onChange={(e) => setSpeed(e.target.valueAsNumber) } />
 					</div>
-					<p className="w-fit">{ t('buttons.origin') }. x: {Math.round(origin.x)}, y: {Math.round(origin.y)}</p>
+					<div className="inline-flex gap-2">
+						<div className="inline-flex gap-2 border black border-1 border-black rounded px-2">
+							<button onClick={() => setPaused(!paused)}>{ paused ? `${t('buttons.play')} ▶️` : `${t('buttons.pause')} ⏸️` }</button>
+						</div>
+						<div className="inline-flex gap-2 border black border-1 border-black rounded px-2">
+							<button>{t('buttons.undo')} ⏪</button>
+						</div>
+					</div>
+					<p className="w-fit border black border-1 border-black rounded px-2">{ t('buttons.origin') }. x: {Math.round(origin.x)}, y: {Math.round(origin.y)}</p>
 				</div>
 			</div>
 

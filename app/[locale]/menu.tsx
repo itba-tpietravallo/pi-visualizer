@@ -12,7 +12,8 @@ export default function Menu({
     actions,
     handleButtonClick,
     handleSelectChange,
-    handleInputChange
+    handleInputChange,
+    paused
 }: {
     className?: string, 
     inputValue1: number,
@@ -23,7 +24,8 @@ export default function Menu({
     actions: ReturnType<Structure["getActions"]>, 
     handleButtonClick?: (action: string) => void,
     handleSelectChange?: Dispatch<SetStateAction<[StructureType, StructureType]>>,
-    handleInputChange?: (input: [number, number]) => void
+    handleInputChange?: (input: [number, number]) => void,
+    paused: boolean,
 }) {
     const t = useTranslations();
 
@@ -91,19 +93,20 @@ export default function Menu({
                 />
                 {
                     actions.map((action, index) => (
-                        <button key={index} className="border border-1 border-black rounded px-2" onClick={ () => action.action(inputValue1, inputValue2) }>{t(action.name)}</button>
+                        <button disabled={paused} key={index} className="border border-1 border-black rounded px-2 disabled:bg-gray-400 disabled:opacity-20" onClick={ () => action.action(inputValue1, inputValue2) }>{t(action.name)}</button>
                     ))
                 }
-                <button className="border border-1 border-black rounded px-2" onClick={() => handleButtonClick?.call(null, 'Clear')}>{t('buttons.clear')}</button>
+                <button disabled={paused} className="border border-1 border-black rounded px-2 disabled:bg-gray-400 disabled:opacity-20" onClick={() => handleButtonClick?.call(null, 'Clear')}>{t('buttons.clear')}</button>
             </div>
             <div id="structure-selection" className="flex flex-row gap-x-2 m-2">
                 {/* <button className="border border-1 border-black rounded px-2" onClick={() => handleButtonClick?.call(null, 'New')}>New</button> */}
-                <button className="border border-1 border-black rounded px-2" onClick={() => handleButtonClick?.call(null, 'Default')}>{t('buttons.create-default')}</button>
+                <button disabled={paused} className="border border-1 border-black rounded px-2 disabled:bg-gray-400 disabled:opacity-20" onClick={() => handleButtonClick?.call(null, 'Default')}>{t('buttons.create-default')}</button>
                 <select
                     ref={select1}
                     defaultValue={dataStructureSelection[0]}
-                    className="border border-1 border-black rounded px-2"
+                    className="border border-1 border-black rounded px-2 disabled:bg-gray-400 disabled:opacity-20"
                     onChange={(event) => handleSelect(event, 'structure1')}
+                    disabled={paused}
                 >
                     {
                         Object.values(StructureType)
@@ -114,8 +117,9 @@ export default function Menu({
                 <select
                     ref={select2}
                     defaultValue={dataStructureSelection[1]}
-                    className="border border-1 border-black rounded px-2"
+                    className="border border-1 border-black rounded px-2 disabled:bg-gray-400 disabled:opacity-20"
                     onChange={(event) => handleSelect(event, 'structure2')}
+                    disabled={paused}
                 >
                     {
                         Object.values(StructureType)
