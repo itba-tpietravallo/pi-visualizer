@@ -53,6 +53,11 @@ export class Canvas {
         if (this.lastTimerResolve != null) this.lastTimerResolve!(null);
     }
 
+    pause() {
+        this.intervalMS = 0;
+        if (this.lastTimerResolve != null) this.lastTimerResolve!(null);
+    }
+
     getZoom() {
         return this.zoom;
     }
@@ -79,16 +84,16 @@ export class Canvas {
         this.ctx.textBaseline = values[5]!;
     }
 
-    wrapGenerator(generator: Generator<Node, Node | null, any>) {
+    wrapGenerator(generator: Generator<Node, Node | boolean | null, any>) {
         const wait = (ms: number) => new Promise(resolve => (this.lastTimerResolve = resolve, setTimeout(resolve, ms)));
         
         Promise.resolve().then(async () => {
-            let res: IteratorResult<Node, Node | null> ;
+            let res: IteratorResult<Node, Node | boolean | null> ;
             let prevNode = undefined;
             while (res = generator.next()) {
-                if (prevNode) prevNode.setHightlight(this, false);
+                if (prevNode && typeof prevNode != "boolean") prevNode.setHightlight(this, false);
                 prevNode = res.value;
-                if (prevNode) prevNode.setHightlight(this, true);
+                if (prevNode && typeof prevNode != "boolean") prevNode.setHightlight(this, true);
                 if (res.done) {
                     // Needs to trigger a full re-render so position-color-size information flows down from the parent structures
                     // There's probably a better way to achieve this...
@@ -100,7 +105,8 @@ export class Canvas {
                 }
                 await wait(this.intervalMS);
             }
-            res?.value?.setHightlight(this, false);
+
+            if (typeof res?.value != "boolean") res?.value?.setHightlight(this, false);
             // Needs to trigger a full re-render so removed nodes are not drawn
             // (Only required on remove)
             this.render();
@@ -224,10 +230,10 @@ export abstract class Structure extends DrawableElement {
 
     abstract insert(...vals: any[]): Generator<Node, Node>;
     /**
-     * Note: This method shall YIELD the node that is being removed, instead of returning it, and returns null.
+     * Note: This method shall YIELD the node that is being removed, instead of returning it, and returns a boolean indicating whether the node was removed or not.
      * This is to allow wrapGenerator to highlight the node being removed.
      */
-    abstract remove(...vals: any[]): Generator<Node, Node | null>;
+    abstract remove(...vals: any[]): Generator<Node, Boolean>;
     abstract search(...vals: any[]): Generator<Node, Node | null>;
     abstract iterateElements(): Generator<DrawableElement>;
     abstract getActions(canvas: Canvas): { name: string, action: (...vals: any[]) => void }[];
@@ -428,12 +434,12 @@ export class List extends Structure {
     }
 
     * remove(key: any) {
-        if (this.head === null) return null;
+        if (this.head === null) return false;
 
         if (this.head.key === key) {
             yield this.head;
             this.head = this.head.next;
-            return null;
+            return true;
         }
 
         let current = this.head;
@@ -442,13 +448,13 @@ export class List extends Structure {
             if (current.next.key == key) {
                 yield current.next ;
                 current.next = current.next.next;
-                return null;
+                return true;
             }
             current = current.next;
             yield current;
         }
 
-        return null;
+        return false;
     }
 
     * search(key: any) {
@@ -526,7 +532,7 @@ export class Queue extends List {
     }
 
     * remove() {
-        if (this.head === null) return null;
+        if (this.head === null) return false;
         yield this.head;
         this.head = this.head.next;
 
@@ -538,7 +544,7 @@ export class Queue extends List {
             }
         }
             
-        return null;
+        return true;
     }
 
     getActions(canvas: Canvas): { name: string; action: (data: any) => void; }[] {
@@ -590,7 +596,7 @@ export class Stack extends List {
     }
 
     * remove() {
-        if (this.head === null) return null;
+        if (this.head === null) return false;
         yield this.head;
         this.head = this.head.next;
 
@@ -602,7 +608,7 @@ export class Stack extends List {
             }
         }
 
-        return null;
+        return true;
     }
 
     getActions(canvas: Canvas): { name: string; action: (data: any) => void; }[] {
@@ -702,7 +708,7 @@ export class Composed extends Structure {
             return yield * current.value.remove(value);
         }
 
-        return null;
+        return false;
     }
 
     * search(key: any, value: any): Generator<Node, Node | null> {
@@ -926,10 +932,10 @@ export class ListADT extends ADT {
     }
 
     * remove(data?: any) {
-        const node = yield * this.structure!.remove(data);
-        this.elemCount--;
+        const nodeRemoved = yield * this.structure!.remove(data);
+        if (nodeRemoved) this.elemCount--;
         if (this.elemCount == 0) this.drawStructure = false
-        return node;
+        return nodeRemoved;
     }
 
     * search(data: any) {
