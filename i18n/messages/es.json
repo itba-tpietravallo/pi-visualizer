@@ -12,8 +12,13 @@
         "remove": "Remover",
         "remove-first": "Remover (primero)",
         "pause": "Pausar",
+        "pause-title": "Pausa la visualización",
         "play": "Reproducir",
-        "undo": "Deshacer"
+        "play-title": "Reanuda la visualización",
+        "next": "Siguiente",
+        "next-title": "Avanza al siguiente paso",
+        "undo": "Deshacer",
+        "undo-title": "Deshace la última operación. Espera a que la operación actual termine antes de deshacer"
     },
     "data-structures": {
         "Linked List": "Lista",

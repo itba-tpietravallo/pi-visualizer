@@ -64,7 +64,8 @@ export default function Menu({
         <div id="menu" className={className}>
             <div id="data-input" className="flex flex-row gap-x-2 m-2">
                 <input
-                    className="border border-1 border-black rounded px-2 w-12"
+                    disabled={paused}
+                    className="border border-1 border-black rounded px-2 w-12 bg:white disabled:bg:gray disabled:opacity-20"
                     type="text"
                     inputMode="numeric"
                     pattern="[0-9]+"
@@ -77,9 +78,8 @@ export default function Menu({
                     }}
                 />
                 <input
-                    disabled={!showSecondInput}
-                    className="border border-1 border-black rounded px-2 w-12"
-                    style={{ backgroundColor: showSecondInput ? 'white' : 'gray', opacity: showSecondInput ? 1 : 0.2 }}
+                    disabled={!showSecondInput || paused}
+                    className="border border-1 border-black rounded px-2 w-12 bg:white disabled:bg:gray disabled:opacity-20"
                     type="text"
                     inputMode="numeric"
                     pattern="[0-9]+"

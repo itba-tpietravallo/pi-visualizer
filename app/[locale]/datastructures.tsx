@@ -54,8 +54,11 @@ export class Canvas {
     }
 
     pause() {
-        this.intervalMS = 0;
-        if (this.lastTimerResolve != null) this.lastTimerResolve!(null);
+        this.setIntervalMs(0x7FFFFFFF);
+    }
+
+    stepNext() {
+        this.lastTimerResolve?.(null);
     }
 
     getZoom() {
@@ -233,7 +236,7 @@ export abstract class Structure extends DrawableElement {
      * Note: This method shall YIELD the node that is being removed, instead of returning it, and returns a boolean indicating whether the node was removed or not.
      * This is to allow wrapGenerator to highlight the node being removed.
      */
-    abstract remove(...vals: any[]): Generator<Node, Boolean>;
+    abstract remove(...vals: any[]): Generator<Node, boolean>;
     abstract search(...vals: any[]): Generator<Node, Node | null>;
     abstract iterateElements(): Generator<DrawableElement>;
     abstract getActions(canvas: Canvas): { name: string, action: (...vals: any[]) => void }[];

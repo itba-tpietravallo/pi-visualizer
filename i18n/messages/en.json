@@ -12,8 +12,13 @@
         "remove": "Remove",
         "remove-first": "Remove (first)",
         "pause": "Pause",
+        "pause-title": "Pause the visualization",
         "play": "Play",
-        "undo": "Undo"
+        "play-title": "Resume playing the visualization",
+        "next": "Next",
+        "next-title": "Advance to the next step",
+        "undo": "Undo",
+        "undo-title": "Undo the last operation. Wait for the current operation to finish before undoing"
     },
     "data-structures": {
         "Linked List": "LinkedList",

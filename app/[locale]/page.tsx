@@ -124,7 +124,7 @@ export default function Home() {
 		if (!paused)
 			canvas.setIntervalMs(1000 - (speed * 10));
 		else // MDN: When `delay` is larger than `2147483647` or less than `1`, the `delay` will be set to `1`. Non-integer delays are truncated to an integer.
-			canvas.setIntervalMs(0x7FFFFFFF);
+			canvas.pause();
 	}, [speed, paused]);
 
 	const preventDefault = (e: Event) => e.preventDefault();
@@ -202,12 +202,16 @@ export default function Home() {
 						<input className="inline-block" type="range" min="10" max="100" defaultValue={speed} onChange={(e) => setSpeed(e.target.valueAsNumber) } />
 					</div>
 					<div className="inline-flex gap-2">
-						<div className="inline-flex gap-2 border black border-1 border-black rounded px-2">
-							<button onClick={() => setPaused(!paused)}>{ paused ? `${t('buttons.play')} ▶️` : `${t('buttons.pause')} ⏸️` }</button>
+						<div>
+							<button title={ paused ? t('buttons.play-title') : t('buttons.pause-title')} className="inline-flex gap-2 border black border-1 border-black rounded px-2" onClick={() => setPaused(!paused)}>{ paused ? `${t('buttons.play')} ▶️` : `${t('buttons.pause')} ⏸️` }</button>
 						</div>
-						<div className="inline-flex gap-2 border black border-1 border-black rounded px-2">
-							<button>{t('buttons.undo')} ⏪</button>
+						<div>
+							<button title={t('buttons.next-title')} className="inline-flex gap-2 border black border-1 border-black rounded px-2 disabled:bg-gray-400 disabled:opacity-20" disabled={!paused}  onClick={() => canvas.stepNext() }>{ `${t('buttons.next')} ⏭️` }</button>
 						</div>
+						{/* @todo Undo button Issue #7 */}
+						{/* <div>
+							<button title={t('buttons.undo-title')} className="inline-flex gap-2 border black border-1 border-black rounded px-2">{t('buttons.undo')} ⏪</button>
+						</div> */}
 					</div>
 					<p className="w-fit border black border-1 border-black rounded px-2">{ t('buttons.origin') }. x: {Math.round(origin.x)}, y: {Math.round(origin.y)}</p>
 				</div>
