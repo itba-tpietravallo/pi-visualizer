@@ -24,3 +24,14 @@ bun dev
 Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
 
 You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+
+### Using Docker
+
+Make sure that Docker Daemon is running, then run the following commands:
+
+```bash
+docker pull node:alpine3.20
+docker run -ti -v .:/app -p 13000:3000 --entrypoint "/bin/sh" node:alpine3.20
+npm run dev
+```
+Open [http://localhost:13000](http://localhost:13000) with your browser to see the result.
