@@ -74,7 +74,7 @@ export class Canvas {
     }
 
     preserveSettings() {
-        return [ this.ctx?.font, this.ctx?.fillStyle, this.ctx?.strokeStyle, this.ctx?.lineWidth, this.ctx?.textAlign, this.ctx?.textBaseline ] as const;
+        return [ this.ctx?.font, this.ctx?.fillStyle, this.ctx?.strokeStyle, this.ctx?.lineWidth, this.ctx?.textAlign, this.ctx?.textBaseline, this.ctx?.getLineDash() ] as const;
     }
 
     restoreSettings(values: ReturnType<Canvas["preserveSettings"]>) {
@@ -85,6 +85,7 @@ export class Canvas {
         this.ctx.lineWidth = values[3]!;
         this.ctx.textAlign = values[4]!;
         this.ctx.textBaseline = values[5]!;
+        this.ctx.setLineDash(values[6]!);
     }
 
     wrapGenerator(generator: Generator<Node, Node | boolean | null, any>) {
@@ -238,12 +239,12 @@ export abstract class Structure extends DrawableElement {
      */
     abstract remove(...vals: any[]): Generator<Node, boolean>;
     abstract search(...vals: any[]): Generator<Node, Node | null>;
-    abstract iterateElements(): Generator<DrawableElement>;
+    abstract iterateElements(): Generator<DrawableElement | null>;
     abstract getActions(canvas: Canvas): { name: string, action: (...vals: any[]) => void }[];
 
     applyToElements(fn : (elem: DrawableElement) => void) {
         for (const elem of this.iterateElements()) {
-            fn(elem);
+            elem && fn(elem);
         }
     };
 
@@ -342,6 +343,130 @@ export class Node extends DrawableElement {
         if (this.next) {
             Node.drawArrow(canvas, this.x, this.y, this.next.x, this.next.y, this.size, this.next.size);
         }
+    }
+}
+
+export class Vector extends Structure {
+    public readonly type: StructureType = StructureType.VECTOR;
+    private static readonly bgColor = 'silver';
+    private static readonly separation = 1.1;
+    private elements: (Node | null)[] = [];
+
+    constructor(public readonly length: number) {
+        super();
+    }
+
+    static ofLength(length: number) {
+        const vector = new Vector(length);
+        for (let i = 0; i < length; i++) {
+            if (i <= length * 0.3){
+                exhaustGenerator(vector.insert(i));
+            } else {
+                vector.elements.push(null);
+            }
+        }
+        return vector;
+    }
+
+    draw(canvas: Canvas) {
+        this.setDefaultDrawAttributes();
+        const ctx = canvas.getContext()!;
+        const [ offsetX, offsetY ] = canvas.getOffset();
+        const zoom = canvas.getZoom();
+        let width = (this.elements.length - 1) * (Vector.separation - 1) * this.size * zoom + this.elements.length * this.size * zoom + 10;
+        let height = this.size * zoom + 10;
+        if (this.display === Display.VERTICAL) [width, height] = [height, width];
+        const settings = canvas.preserveSettings();
+
+        ctx.strokeStyle = this.color;
+        ctx.fillStyle = Vector.bgColor;
+        ctx.setLineDash([5, 5]);
+        ctx.lineWidth = 2;
+        ctx.fillRect(this.x + offsetX - 5, this.y + offsetY - 5, width, height);
+        ctx.strokeRect(this.x + offsetX - 5, this.y + offsetY - 5, width, height);
+
+        canvas.restoreSettings(settings);
+
+        for (let i = 0; i < this.elements.length; i++) {
+            const elem = this.elements[i];
+            if (elem) {
+                elem.draw(canvas);
+            } else {
+                ctx.fillStyle = this.color;
+                let x = this.x + i * Vector.separation * this.size * zoom;
+                let y = this.y;
+                if (this.display === Display.VERTICAL) [x, y] = [y, x];
+                canvas.getContext()?.fillRect(x + offsetX, y + offsetY, this.size * zoom, this.size * zoom);
+            }
+        }
+        return this;
+    }
+
+    setPos(x: number, y: number) {
+        super.setPos(x, y);
+        let currentX = x;
+        this.elements.forEach((elem) => {
+            elem?.setPos(currentX, y);
+            currentX += this.size * Vector.separation;
+        });
+        return this;
+    }
+
+    setColor(color: string) {
+        super.setColor(color);
+        this.elements.forEach((elem) => elem?.setColor(color));
+        return this;
+    }
+
+    setSize(size: number) {
+        super.setSize(size);
+        this.elements.forEach((elem) => elem?.setSize(size));
+        return this;
+    }
+
+    * insert(data: any, value: any = null) {
+        const newNode = new Node(data, value);
+        newNode.setType(NodeType.RECTANGULAR);
+        this.elements[data] = newNode;
+        return newNode;
+    }
+
+    * remove(key: any) {
+        if (this.elements[key])
+            yield this.elements[key];
+        this.elements[key] = null;
+        return key < this.elements.length;
+    }
+
+    * search(key: any) {
+        if (this.elements[key]) {
+            yield this.elements[key];
+        }
+        return null
+    }
+
+    * iterateElements() {
+        for (const elem of this.elements) {
+            yield elem;
+        }
+        return null;
+    }
+
+    getActions(canvas: Canvas) {
+        return [
+            {
+                name: 'buttons.insert',
+                action: (data: any) => canvas.wrapGenerator(this.insert(data))
+            },
+            {
+                name: 'buttons.remove',
+                action: (data: any) => canvas.wrapGenerator(this.remove(data))
+            },
+            {
+                name: 'buttons.search',
+                action: (data: any) => canvas.wrapGenerator(this.search(data))
+            },
+        ];
     }
 }
 
@@ -755,6 +880,8 @@ export class Composed extends Structure {
 
     static getNewStructure(type: StructureType, isHead: boolean = false): Structure | undefined {
         switch (type) {
+            case StructureType.VECTOR:
+                return new Vector(5).setDefaultDrawAttributes();
             case StructureType.LIST:
                 // No not allow duplicates in parent list
                 return new List(!isHead).setDefaultDrawAttributes();
@@ -1035,6 +1162,8 @@ export function createStructure(type: StructureType, subtype?: StructureType): S
     }
     
     switch (type) {
+        case StructureType.VECTOR:
+            return new Vector(5).setDefaultDrawAttributes();
         case StructureType.LIST:
             return new List().setDefaultDrawAttributes();
         case StructureType.QUEUE:
@@ -1053,7 +1182,7 @@ export function createStructure(type: StructureType, subtype?: StructureType): S
 }
 
 export function createDefaultStructure(type: StructureType, subtype?: StructureType): Structure | undefined {
-    if ( type == StructureType.VECTOR || subtype == StructureType.VECTOR ) {
+    if ( subtype == StructureType.VECTOR ) {
         return undefined ; // @todo : Not implemented yet
     }
 
@@ -1062,6 +1191,8 @@ export function createDefaultStructure(type: StructureType, subtype?: StructureT
     }
 
     switch (type) {
+        case StructureType.VECTOR:
+            return Vector.ofLength(5).setDefaultDrawAttributes();
         case StructureType.LIST:
             return List.ofLength(3).setDefaultDrawAttributes();
         case StructureType.QUEUE:

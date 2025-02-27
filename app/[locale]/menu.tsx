@@ -110,7 +110,7 @@ export default function Menu({
                 >
                     {
                         Object.values(StructureType)
-                            .filter(a => a != StructureType.EMPTY && a != StructureType.VECTOR)
+                            .filter(a => a != StructureType.EMPTY)
                             .map((type) => <option key={type} value={type}>{t(`data-structures.${type}`)}</option>) 
                     }
                 </select>
