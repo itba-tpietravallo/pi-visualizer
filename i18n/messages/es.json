@@ -6,11 +6,8 @@
         "clear": "Limpiar", 
         "create-default": "Crear inicializado",
         "insert": "Insert",
-        "insert-first": "Insertar (primero)",
-        "insert-last": "Insertar (ultimo)",
         "search": "Buscar",
         "remove": "Remover",
-        "remove-first": "Remover (primero)",
         "pause": "Pausar",
         "pause-title": "Pausa la visualización",
         "play": "Reproducir",
@@ -19,6 +16,14 @@
         "next-title": "Avanza al siguiente paso",
         "undo": "Deshacer",
         "undo-title": "Deshace la última operación. Espera a que la operación actual termine antes de deshacer"
+    },
+    "action-modifier": {
+        "first": "primero",
+        "last": "ultimo",
+        "index": "por indice",
+        "linear": "lineal",
+        "ordered": "ordenado",
+        "then": "luego"
     },
     "data-structures": {
         "Linked List": "Lista",
@@ -34,11 +39,13 @@
     "about": {
         "abstract-data-types": "Tipos Abstractos de Datos",
         "abstract-data-types-description": "Los Tipos Abstractos de Datos (TADs) son una herramienta que permite definir una estructura de datos en términos de las operaciones que pueden realizarse sobre esta, sin especificar o revelar cómo estas están implementadas. Esto permite una clara separación entre la interfaz y la implementación de la estructura de datos.",
-        "abstract-data-types-note": "<important>Importante</important>: Esto no muestra todos los posibles TADs/tipos concretos, solo algunas de las estructuras principales (a nivel superficial). En una implementación real probablemente se incluirían campos para preservar el tamaño o permitir la iteración.",
+        "abstract-data-types-note": "<important>Importante</important>: Esto no muestra todos los posibles TADs/tipos concretos (o sus implementaciones), solo algunas de las estructuras principales (a nivel superficial).",
         "abstract-data-types-pdf-guide": "<pdf>PDF con dibujos y notas</pdf>",
         "visualization": "Visualización",
         "visualization-description": "Aquí puedes visualizar el comportamiento de algunas de las estructuras de datos más comunes. Puedes crear nuevas instancias, realizar operaciones sobre ellas y observar cómo cambian en tiempo real.",
-        "visualization-available-actions": "Algunas operaciones están disponibles en todas las estructuras de datos, como Buscar. Otras pueden ver su comportamiento alterado (por ejemplo, una Lista puede `insertar`, pero una Cola solo `insertar-al-final`). Las operaciones que se muestran en el menú corresponderán a los tipos de datos seleccionados."
+        "visualization-available-actions": "Algunas operaciones están disponibles en todas las estructuras de datos, como Buscar. Otras pueden ver su comportamiento alterado (por ejemplo, una Lista puede `insertar`, pero una Cola solo `insertar-al-final`). Las operaciones que se muestran en el menú corresponderán a los tipos de datos seleccionados.",
+        "mistakes-and-errors-note": "<important>Importante</important>: Esto no muestra todos los tipos de datos posibles, sus usos y combinaciones. Las estructuras que se evaluen en el curso pueden variar o incluir diferentes campos y operaciones, <important>que no se muestren aca</important>. Esto es simplemente una ayuda visual para el curso, para ayudar a entender por qué elegimos ciertas estructuras sobre otras y cómo funcionan.",
+        "github": "Este proyecto es de código abierto y está disponible en <github>GitHub</github>. Se aceptan contribuciones y reportes de errores."
     },
     "other-languages": {
         "see-lang-version": "Ver esta pagina en",

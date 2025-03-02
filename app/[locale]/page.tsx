@@ -11,7 +11,7 @@ export default function Home() {
 	const startDragOffset = useRef({ x: 0, y: 0 });
 	const startZoom = useRef(1);
 
-	const canvas = useMemo(() => new Canvas(canvasRef.current?.getContext('2d')!), [canvasRef.current]);
+	const canvas = useMemo(() => new Canvas(canvasRef.current?.getContext('2d')!), [canvasRef]);
 
 	const [ origin, setOrigin ] = useState({ x: 0, y: 0 });
 	const [ isDragging, setIsDragging ] = useState(false);
@@ -118,7 +118,7 @@ export default function Home() {
 		canvas.replaceElements(elem);
 		setActions(elem?.getActions(canvas) || []);
 		canvas.render();
-	}, [dataStructureSelection]);
+	}, [dataStructureSelection, canvas]);
 
 	useEffect(() => {
 		// 1000ms - [% to 0-1000ms range]
@@ -199,26 +199,40 @@ export default function Home() {
 					/>
 				</div>
 
-				<div className="w-full flex flex-col gap-2 items-start">
-					<div className="inline-flex align-middle border black border-1 border-black rounded px-2">
-						<p className="inline-block w-[120px]">{ t('buttons.speed') }: {Math.round((speed))}%</p>
-						<input className="inline-block" type="range" min="10" max="100" defaultValue={speed} onChange={(e) => setSpeed(e.target.valueAsNumber) } />
-					</div>
-					<div className="inline-flex gap-2">
-						<div>
-							<button title={ paused ? t('buttons.play-title') : t('buttons.pause-title')} className="inline-flex gap-2 border black border-1 border-black rounded px-2" onClick={() => setPaused(!paused)}>{ paused ? `${t('buttons.play')} ▶️` : `${t('buttons.pause')} ⏸️` }</button>
+				<div className="w-[95%] flex flex-col items-start">
+					<div className="w-full flex flex-col gap-2 items-start">
+						<div className="inline-flex align-middle border black border-1 border-black rounded px-2">
+							<p className="inline-block w-[120px]">{ t('buttons.speed') }: {Math.round((speed))}%</p>
+							<input className="inline-block" type="range" min="10" max="100" defaultValue={speed} onChange={(e) => setSpeed(e.target.valueAsNumber) } />
 						</div>
-						<div>
-							<button title={t('buttons.next-title')} className="inline-flex gap-2 border black border-1 border-black rounded px-2 disabled:bg-gray-400 disabled:opacity-20" disabled={!paused}  onClick={() => canvas.stepNext() }>{ `${t('buttons.next')} ⏭️` }</button>
+						<div className="inline-flex gap-2">
+							<div>
+								<button title={ paused ? t('buttons.play-title') : t('buttons.pause-title')} className="inline-flex gap-2 border black border-1 border-black rounded px-2" onClick={() => setPaused(!paused)}>{ paused ? `${t('buttons.play')} ▶️` : `${t('buttons.pause')} ⏸️` }</button>
+							</div>
+							<div>
+								<button title={t('buttons.next-title')} className="inline-flex gap-2 border black border-1 border-black rounded px-2 disabled:bg-gray-400 disabled:opacity-20" disabled={!paused}  onClick={() => canvas.stepNext() }>{ `${t('buttons.next')} ⏭️` }</button>
+							</div>
+							{/* @todo Undo button Issue #7 */}
+							{/* <div>
+								<button title={t('buttons.undo-title')} className="inline-flex gap-2 border black border-1 border-black rounded px-2">{t('buttons.undo')} ⏪</button>
+							</div> */}
 						</div>
-						{/* @todo Undo button Issue #7 */}
-						{/* <div>
-							<button title={t('buttons.undo-title')} className="inline-flex gap-2 border black border-1 border-black rounded px-2">{t('buttons.undo')} ⏪</button>
-						</div> */}
+						{/* <p className="w-fit border black border-1 border-black rounded px-2">{ t('buttons.origin') }. x: {Math.round(origin.x)}, y: {Math.round(origin.y)}</p> */}
 					</div>
-					<p className="w-fit border black border-1 border-black rounded px-2">{ t('buttons.origin') }. x: {Math.round(origin.x)}, y: {Math.round(origin.y)}</p>
 				</div>
 			</div>
+
+			<hr className="border-black w-1/3"/>
+
+			<h2 className="text-3xl">{ t('about.visualization') }</h2>
+
+			<p>{ t('about.visualization-description') }</p>
+
+			<p>{ t('about.visualization-available-actions') }</p>
+
+			<p>{ t.rich('about.mistakes-and-errors-note', {
+				important: (chunks) => <b>{chunks}</b>
+			}) }</p>
 
 			<hr className="border-black w-1/3"/>
 
@@ -236,13 +250,11 @@ export default function Home() {
 				})
 			}</div>
 
-			<h2 className="text-3xl">{ t('about.visualization') }</h2>
-
-			<p>{ t('about.visualization-description') }</p>
-
-			<p>{ t('about.visualization-available-actions') }</p>
-
 			<hr className="border-black w-1/3"/>
+
+			<p>{ t.rich('about.github', {
+				github: (chunks) => <a className="text-blue-600 underline italic" href="http://github.com/itba-tpietravallo/pi-visualizer" target="_blank">{chunks}</a>
+			}) }</p>
 
 			<p>{ t('other-languages.see-lang-version') }: { availableLanguagesButtons }</p>
 			

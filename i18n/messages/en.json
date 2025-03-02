@@ -6,11 +6,8 @@
         "clear": "Clear",
         "create-default": "Create default",
         "insert": "Insert",
-        "insert-first": "Insert (first)",
-        "insert-last": "Insert (last)",
         "search": "Search",
         "remove": "Remove",
-        "remove-first": "Remove (first)",
         "pause": "Pause",
         "pause-title": "Pause the visualization",
         "play": "Play",
@@ -19,6 +16,14 @@
         "next-title": "Advance to the next step",
         "undo": "Undo",
         "undo-title": "Undo the last operation. Wait for the current operation to finish before undoing"
+    },
+    "action-modifier": {
+        "first": "first",
+        "last": "last",
+        "index": "by index",
+        "linear": "linear",
+        "ordered": "ordered",
+        "then": "then"
     },
     "data-structures": {
         "Linked List": "LinkedList",
@@ -34,11 +39,13 @@
     "about": {
         "abstract-data-types": "Abstract Data Types",
         "abstract-data-types-description": "Abstract Data Types (ADTs) are a way to define a data structure in terms of the operations that can be performed on it, without specifying how these operations are implemented. This allows for a clear separation between the interface and the implementation of the data structure.",
-        "abstract-data-types-note": "<important>Important</important>: This does not show a full ADT/CDT, only the underlying data strucures. In a real implementation, things like size/iteration fields would likely be present",
+        "abstract-data-types-note": "<important>Important</important>: This does not show all possible ADTs/CDTs (or their implementations), only part of the underlying data structures.",
         "abstract-data-types-pdf-guide": "<pdf>PDF Guide with notes and drawings (in Spanish)</pdf>",
         "visualization": "Visualization",
         "visualization-description": "Here you can visualize the behavior of some of the most common data structures. You can create new instances, perform operations on them and see how they change in real time.",
-        "visualization-available-actions": "Some operations are available on all data structures, like Search. Others may see their behaviour altered (for example a List may `insert` but a Queue will only `insert-last`). The operations displayed on the menu will correspond to the selected data types"
+        "visualization-available-actions": "Some operations are available on all data structures, like Search. Others may see their behaviour altered (for example a List may `insert` but a Queue will only `insert-last`). The operations displayed on the menu will correspond to the selected data types",
+        "mistakes-and-errors-note": "<important>Important</important>: This does not show all posible data types, their use, and combinations. The structures you'll be tested on may vary or include different fields and operations, <important>not showcased here</important>. This is merely a visual aid for the course, to help understand why we choose certain structures over others, and how they work.",
+        "github": "This project is open source and available on <github>GitHub</github>. Feel free to contribute or report issues"
     },
     "other-languages": {
         "see-lang-version": "See this page in",

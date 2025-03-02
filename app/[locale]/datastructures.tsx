@@ -240,11 +240,11 @@ export abstract class Structure extends DrawableElement {
     abstract remove(...vals: any[]): Generator<Node, boolean>;
     abstract search(...vals: any[]): Generator<Node, Node | null>;
     abstract iterateElements(): Generator<DrawableElement | null>;
-    abstract getActions(canvas: Canvas): { name: string, action: (...vals: any[]) => void }[];
+    abstract getActions(canvas: Canvas): { name: string, modifier?: string[], action: (...vals: any[]) => void }[];
 
     applyToElements(fn : (elem: DrawableElement) => void) {
         for (const elem of this.iterateElements()) {
-            elem && fn(elem);
+            if (elem) fn(elem);
         }
     };
 
@@ -481,14 +481,17 @@ export class Vector extends Structure {
         return [
             {
                 name: 'buttons.insert',
+                modifier: ['index'],
                 action: (data: any) => canvas.wrapGenerator(this.insert(data))
             },
             {
                 name: 'buttons.remove',
+                modifier: ['index'],
                 action: (data: any) => canvas.wrapGenerator(this.remove(data))
             },
             {
                 name: 'buttons.search',
+                modifier: ['index'],
                 action: (data: any) => canvas.wrapGenerator(this.search(data))
             },
         ];
@@ -515,7 +518,7 @@ export class StaticVector extends Vector {
         return vector;
     }
 
-    // @ts-ignore
+    // @ts-expect-error eslint
     * insert(data: any, value: any = null) {
         if (data < this.elements.length) {
             return yield * super.insert(data, value);
@@ -528,14 +531,17 @@ export class StaticVector extends Vector {
         return [
             {
                 name: 'buttons.insert',
+                modifier: ['index'],
                 action: (data: any) => canvas.wrapGenerator(this.insert(data))
             },
             {
                 name: 'buttons.remove',
+                modifier: ['index'],
                 action: (data: any) => canvas.wrapGenerator(this.remove(data))
             },
             {
                 name: 'buttons.search',
+                modifier: ['index'],
                 action: (data: any) => canvas.wrapGenerator(this.search(data))
             },
         ];
@@ -680,18 +686,21 @@ export class List extends Structure {
         return null;
     }
 
-    getActions(canvas: Canvas) {
+    getActions(canvas: Canvas): { name: string, modifier?: string[], action: (data: any) => void }[] {
         return [
             {
                 name: 'buttons.insert',
+                modifier: ['ordered'],
                 action: (data: any) => canvas.wrapGenerator(this.insert(data))
             },
             {
                 name: 'buttons.remove',
+                modifier: ['ordered'],
                 action: (data: any) => canvas.wrapGenerator(this.remove(data))
             },
             {
                 name: 'buttons.search',
+                modifier: ['linear'],
                 action: (data: any) => canvas.wrapGenerator(this.search(data))
             },
         ];
@@ -743,22 +752,25 @@ export class Queue extends List {
                 this.y += this.size * 1.5;
             }
         }
-            
+        
         return true;
     }
 
-    getActions(canvas: Canvas): { name: string; action: (data: any) => void; }[] {
+    getActions(canvas: Canvas): { name: string, modifier?: string[], action: (data: any) => void }[] {
         return [
             {
-                name: 'buttons.insert-last',
+                name: 'buttons.insert',
+                modifier: ['last'],
                 action: (data: any) => canvas.wrapGenerator(this.insert(data))
             },
             {
-                name: 'buttons.remove-first',
+                name: 'buttons.remove',
+                modifier: ['first'],
                 action: () => canvas.wrapGenerator(this.remove())
             },
             {
                 name: 'buttons.search',
+                modifier: ['linear'],
                 action: (data: any) => canvas.wrapGenerator(this.search(data))
             }
         ];
@@ -811,18 +823,21 @@ export class Stack extends List {
         return true;
     }
 
-    getActions(canvas: Canvas): { name: string; action: (data: any) => void; }[] {
+    getActions(canvas: Canvas): { name: string, modifier?: string[], action: (data: any) => void }[] {
         return [
             {
-                name: 'buttons.insert-first',
+                name: 'buttons.insert',
+                modifier: ['first'],
                 action: (data: any) => canvas.wrapGenerator(this.insert(data))
             },
             {
-                name: 'buttons.remove-first',
+                name: 'buttons.remove',
+                modifier: ['first'],
                 action: () => canvas.wrapGenerator(this.remove())
             },
             {
                 name: 'buttons.search',
+                modifier: ['linear'],
                 action: (data: any) => canvas.wrapGenerator(this.search(data))
             }
         ];
@@ -831,9 +846,17 @@ export class Stack extends List {
 
 export class Composed extends Structure {
     protected head: Structure | null = null;
+    protected mainActions: { name: string, modifier?: string[], action: (data: any) => void }[] = [];
+    protected subtypeActions: { name: string, modifier?: string[], action: (data: any) => void }[] = [];
     constructor(protected type: StructureType, protected subtype: StructureType) {
         super();
         this.head = Composed.getNewStructure(type, subtype, true)!;
+
+        // These two lines are required to get the action modifiers for the buttons. 
+        // @refactor: getActions should probably be static and bound to the instance later on (?)... but then again, the Composed modifiers depend on the instance...
+        // This is a bit hacky, but it works for now.
+        this.mainActions = this.head.getActions({ wrapGenerator: () => {} } as any);
+        this.subtypeActions = Composed.getNewStructure(subtype, undefined, false)!.getActions({ wrapGenerator: () => {} } as any);
     }
 
     draw(canvas: Canvas) {
@@ -927,11 +950,28 @@ export class Composed extends Structure {
         return null;
     }
 
-    getActions(canvas: Canvas): { name: string; action: (...vals: any[]) => void; }[] {
+    getActions(canvas: Canvas): { name: string, modifier?: string[], action: (...vals: any[]) => void }[] {
+        const modifiers = (m1?: string[], m2?: string[]) => {
+            if (m1 && m2) return m1.concat(m2);
+            return m1 || m2 || [];
+        };
+
         return [
-            { name: 'buttons.insert', action: (...vals: [any, any]) => canvas.wrapGenerator(this.insert(...vals)) },
-            { name: 'buttons.remove', action: (...vals: [any, any]) => canvas.wrapGenerator(this.remove(...vals)) },
-            { name: 'buttons.search', action: (...vals: [any, any]) => canvas.wrapGenerator(this.search(...vals)) }
+            {
+                name: 'buttons.insert',
+                modifier: modifiers(this.mainActions[0].modifier, this.subtypeActions[0].modifier),
+                action: (...vals: [any, any]) => canvas.wrapGenerator(this.insert(...vals))
+            },
+            {
+                name: 'buttons.remove',
+                modifier: modifiers(this.mainActions[1].modifier, this.subtypeActions[1].modifier),
+                action: (...vals: [any, any]) => canvas.wrapGenerator(this.remove(...vals))
+            },
+            {
+                name: 'buttons.search',
+                modifier: modifiers(this.mainActions[2].modifier, this.subtypeActions[2].modifier),
+                action: (...vals: [any, any]) => canvas.wrapGenerator(this.search(...vals))
+            }
         ];
     }
 
@@ -997,7 +1037,7 @@ export abstract class ADT extends Structure {
         super();
     }
     
-    getActions(canvas: Canvas): { name: string; action: (...vals: any[]) => void; }[] {
+    getActions(canvas: Canvas): { name: string, modifier?: string[], action: (data: any) => void }[] {
         return this.structure?.getActions(canvas)!;
     }
 
@@ -1142,6 +1182,7 @@ export class ListADT extends ADT {
             },
             {
                 name: 'buttons.search',
+                modifier: ['linear'],
                 action: (data: any) => canvas.wrapGenerator(this.search(data))
             },
         ];
@@ -1188,18 +1229,21 @@ export class QueueADT extends ListADT {
         this.structure = new Queue().setDefaultDrawAttributes();
     }
 
-    getActions(canvas: Canvas): { name: string; action: (data: any) => void; }[] {
+    getActions(canvas: Canvas): { name: string, modifier?: string[], action: (data: any) => void }[] {
         return [
             {
-                name: 'buttons.insert-last',
+                name: 'buttons.insert',
+                modifier: ['last'],
                 action: (data: any) => canvas.wrapGenerator(this.insert(data))
             },
             {
-                name: 'buttons.remove-first',
+                name: 'buttons.remove',
+                modifier: ['first'],
                 action: () => canvas.wrapGenerator(this.remove())
             },
             {
                 name: 'buttons.search',
+                modifier: ['linear'],
                 action: (data: any) => canvas.wrapGenerator(this.search(data))
             }
         ];
@@ -1223,18 +1267,21 @@ export class StackADT extends ListADT {
         this.structure = new Stack().setDefaultDrawAttributes();
     }
 
-    getActions(canvas: Canvas): { name: string; action: (data: any) => void; }[] {
+    getActions(canvas: Canvas): { name: string, modifier?: string[], action: (data: any) => void }[] {
         return [
             {
-                name: 'buttons.insert-first',
+                name: 'buttons.insert',
+                modifier: ['first'],
                 action: (data: any) => canvas.wrapGenerator(this.insert(data))
             },
             {
-                name: 'buttons.remove-first',
+                name: 'buttons.remove',
+                modifier: ['first'],
                 action: () => canvas.wrapGenerator(this.remove())
             },
             {
                 name: 'buttons.search',
+                modifier: ['linear'],
                 action: (data: any) => canvas.wrapGenerator(this.search(data))
             }
         ];

@@ -94,7 +94,7 @@ export default function Menu({
                 />
                 {
                     actions.map((action, index) => (
-                        <button disabled={paused} key={index} className="border border-1 border-black rounded px-2 disabled:bg-gray-400 disabled:opacity-20" onClick={ () => action.action(inputValue1, inputValue2) }>{t(action.name)}</button>
+                        <button disabled={paused} key={index} className="border border-1 border-black rounded px-2 disabled:bg-gray-400 disabled:opacity-20" onClick={ () => action.action(inputValue1, inputValue2) }>{t(action.name)}{ action.modifier?.filter(a => a).length ? ` (${action.modifier.map(m => t(`action-modifier.${m}`)).join(`, ${t(`action-modifier.then`)} `)})` : "" }</button>
                     ))
                 }
                 <button disabled={paused} className="border border-1 border-black rounded px-2 disabled:bg-gray-400 disabled:opacity-20" onClick={() => handleButtonClick?.call(null, 'Clear')}>{t('buttons.clear')}</button>
