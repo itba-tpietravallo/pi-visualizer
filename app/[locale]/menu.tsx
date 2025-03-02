@@ -31,6 +31,7 @@ export default function Menu({
 
     const [showSecondInput, setShowSecondInput] = useState(false);
     const [select1, select2] = [useRef<HTMLSelectElement>(null), useRef<HTMLSelectElement>(null)];
+    const composable = [StructureType.VECTOR, StructureType.STATIC_VECTOR, StructureType.LIST] as string[]; 
 
     // Function to handle the change in select fields
     const handleSelect = (event: ChangeEvent<HTMLSelectElement>, selectId: string) => {
@@ -108,11 +109,25 @@ export default function Menu({
                     onChange={(event) => handleSelect(event, 'structure1')}
                     disabled={paused}
                 >
+                    <optgroup label='1er parcial'>
+                    {
+                        <option key={StructureType.STATIC_VECTOR} value={StructureType.STATIC_VECTOR}>{t(`data-structures.${StructureType.STATIC_VECTOR}`)}</option>
+                    }      
+                    </optgroup>
+                    <optgroup label='2do parcial'>
                     {
                         Object.values(StructureType)
-                            .filter(a => a != StructureType.EMPTY)
+                            .filter(a => a != StructureType.EMPTY && a != StructureType.STATIC_VECTOR && !a.toUpperCase().includes('ADT'))
                             .map((type) => <option key={type} value={type}>{t(`data-structures.${type}`)}</option>) 
                     }
+                    </optgroup>
+                    <optgroup label='2do parcial (ADTs)'>
+                    {
+                        Object.values(StructureType)
+                            .filter(a => a.toUpperCase().includes('ADT'))
+                            .map((type) => <option key={type} value={type}>{t(`data-structures.${type}`)}</option>) 
+                    }
+                    </optgroup>
                 </select>
                 <select
                     ref={select2}
@@ -121,11 +136,38 @@ export default function Menu({
                     onChange={(event) => handleSelect(event, 'structure2')}
                     disabled={paused}
                 >
+                    <option value={StructureType.EMPTY}>{StructureType.EMPTY}</option>
+                    <optgroup label='1er parcial'>
+                    {
+                        <option disabled={ !composable.includes(dataStructureSelection[0] as StructureType) } key={StructureType.STATIC_VECTOR} value={StructureType.STATIC_VECTOR}>{t(`data-structures.${StructureType.STATIC_VECTOR}`)}</option>
+                    }      
+                    </optgroup>
+                    <optgroup label='2do parcial'>
                     {
                         Object.values(StructureType)
-                        .filter(a => !(a == StructureType.VECTOR || (dataStructureSelection[0] != StructureType.LIST && a != StructureType.EMPTY)))
-                        .map((type) => <option key={type} value={type}>{t(`data-structures.${type}`)}</option>) 
+                            .filter(a => a != StructureType.EMPTY && a != StructureType.STATIC_VECTOR && !a.toUpperCase().includes('ADT'))
+                            .map((type) =>
+                            <option 
+                                disabled={!composable.includes(dataStructureSelection[0] as StructureType)} 
+                                key={type} 
+                                value={type}>{t(`data-structures.${type}`)}
+                            </option>
+                            ) 
                     }
+                    </optgroup>
+                    <optgroup label='2do parcial (ADTs)'>
+                    {
+                        Object.values(StructureType)
+                            .filter(a => a.toUpperCase().includes('ADT'))
+                            .map((type) =>
+                            <option 
+                                disabled={true}
+                                key={type}
+                                value={type}>{t(`data-structures.${type}`)}
+                            </option>
+                            ) 
+                    }
+                    </optgroup>
                 </select>
             </div>
         </div>

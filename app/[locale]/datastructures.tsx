@@ -88,11 +88,11 @@ export class Canvas {
         this.ctx.setLineDash(values[6]!);
     }
 
-    wrapGenerator(generator: Generator<Node, Node | boolean | null, any>) {
+    wrapGenerator(generator: Generator<Node | null, Node | boolean | null, any>) {
         const wait = (ms: number) => new Promise(resolve => (this.lastTimerResolve = resolve, setTimeout(resolve, ms)));
         
         Promise.resolve().then(async () => {
-            let res: IteratorResult<Node, Node | boolean | null> ;
+            let res: IteratorResult<Node | null, Node | boolean | null> ;
             let prevNode = undefined;
             while (res = generator.next()) {
                 if (prevNode && typeof prevNode != "boolean") prevNode.setHightlight(this, false);
@@ -197,24 +197,24 @@ export abstract class DrawableElement {
             
             if (Math.abs(diffX) < 0.001) {
                 if (diffY > 0) {
-                    this.canvasArrow(ctx, fromx + fromSize / 2 + offsetX, fromy + fromSize + offsetY, tox + toSize / 2 + offsetX, toy + offsetY);
+                    this.canvasArrow(ctx, fromx + fromSize / 2 + offsetX, fromy + fromSize + offsetY, tox + toSize / 2 + offsetX, toy + offsetY, zoom);
                 } else {
-                    this.canvasArrow(ctx, fromx + fromSize / 2 + offsetX, fromy + offsetY, tox + toSize / 2 + offsetX, toy + toSize + offsetY);
+                    this.canvasArrow(ctx, fromx + fromSize / 2 + offsetX, fromy + offsetY, tox + toSize / 2 + offsetX, toy + toSize + offsetY, zoom);
                 }
             } else {
                 if (diffX > 0) {
-                    this.canvasArrow(ctx, fromx + fromSize + offsetX, fromy + fromSize / 2 + offsetY, tox + offsetX, toy + toSize / 2 + offsetY);
+                    this.canvasArrow(ctx, fromx + fromSize + offsetX, fromy + fromSize / 2 + offsetY, tox + offsetX, toy + toSize / 2 + offsetY, zoom);
                 } else {
-                    this.canvasArrow(ctx, fromx + offsetX, fromy + fromSize / 2 + offsetY, tox + toSize + offsetX, toy + toSize / 2 + offsetY);
+                    this.canvasArrow(ctx, fromx + offsetX, fromy + fromSize / 2 + offsetY, tox + toSize + offsetX, toy + toSize / 2 + offsetY, zoom);
                 }
             }
         }
     }
 
     // https://stackoverflow.com/a/6333775
-    protected static canvasArrow(context: CanvasRenderingContext2D, fromx: number, fromy: number, tox: number, toy: number) {
+    protected static canvasArrow(context: CanvasRenderingContext2D, fromx: number, fromy: number, tox: number, toy: number, head_size: number) {
         context.beginPath();
-        const headlen = 10; // length of head in pixels
+        const headlen = 10 * head_size; // length of head in pixels
         const dx = tox - fromx;
         const dy = toy - fromy;
         const angle = Math.atan2(dy, dx);
@@ -232,7 +232,7 @@ export abstract class Structure extends DrawableElement {
     protected display: Display = Display.HORIZONTAL;
     protected performActionInPlace: boolean = false;
 
-    abstract insert(...vals: any[]): Generator<Node, Node>;
+    abstract insert(...vals: any[]): Generator<Node | null, Node | null>;
     /**
      * Note: This method shall YIELD the node that is being removed, instead of returning it, and returns a boolean indicating whether the node was removed or not.
      * This is to allow wrapGenerator to highlight the node being removed.
@@ -260,10 +260,11 @@ export abstract class Structure extends DrawableElement {
 }
 
 export enum StructureType {
+    STATIC_VECTOR = 'Vector (static, size 5)',
+    VECTOR = 'Vector (dynamic)',
     LIST = 'Linked List',
     QUEUE = 'Queue',
     STACK = 'Stack',
-    VECTOR = 'Vector', // this value is filtered in the page.tsx front and not shown as an option (not implemented)
     LISTADT = 'ListADT',
     QUEUEADT = 'QueueADT',
     STACKADT = 'StackADT',
@@ -288,6 +289,9 @@ export class Node extends DrawableElement {
     }
 
     toString() {
+        if (this.value == null && typeof this.key != 'number') {
+            return this.value === null ? "null" : "undefined";
+        };
         const t = (typeof this.value == "string" || typeof this.value == 'number') ? this.value.toString() : this.key.toString()
         return t;
     }
@@ -321,6 +325,7 @@ export class Node extends DrawableElement {
         if (this.type === NodeType.CIRCULAR) {
             ctx.beginPath();
             ctx.arc(x + size / 2 + offsetX, y + size / 2 + offsetY, size / 2, 0, 2 * Math.PI);
+            ctx.closePath();
             ctx.fill();
             ctx.stroke();
         } else if (this.type === NodeType.RECTANGULAR) {
@@ -348,16 +353,17 @@ export class Node extends DrawableElement {
 
 export class Vector extends Structure {
     public readonly type: StructureType = StructureType.VECTOR;
-    private static readonly bgColor = 'silver';
-    private static readonly separation = 1.1;
-    private elements: (Node | null)[] = [];
+    public static readonly separation = 1.2;
+    public static readonly border_size = 5;
+    public static readonly bgColor = 'silver';
+    protected elements: (Node | null)[] = [];
 
-    constructor(public readonly length: number) {
+    constructor() {
         super();
     }
 
     static ofLength(length: number) {
-        const vector = new Vector(length);
+        const vector = new Vector();
         for (let i = 0; i < length; i++) {
             if (i <= length * 0.3){
                 exhaustGenerator(vector.insert(i));
@@ -369,12 +375,19 @@ export class Vector extends Structure {
     }
 
     draw(canvas: Canvas) {
-        this.setDefaultDrawAttributes();
+        if (this.elements.length == 0) return this;
+        this.setPos(this.x, this.y);
+        this.setSize(this.size);
+        this.setColor(this.color);
         const ctx = canvas.getContext()!;
         const [ offsetX, offsetY ] = canvas.getOffset();
         const zoom = canvas.getZoom();
-        let width = (this.elements.length - 1) * (Vector.separation - 1) * this.size * zoom + this.elements.length * this.size * zoom + 10;
-        let height = this.size * zoom + 10;
+        const size = this.size * zoom;
+        const x = this.x * zoom;
+        const y = this.y * zoom;
+        const border = Vector.border_size * zoom;
+        let width = (this.elements.length - 1) * (Vector.separation - 1) * size + this.elements.length * size + border;
+        let height = size + border;
         if (this.display === Display.VERTICAL) [width, height] = [height, width];
         const settings = canvas.preserveSettings();
 
@@ -382,21 +395,26 @@ export class Vector extends Structure {
         ctx.fillStyle = Vector.bgColor;
         ctx.setLineDash([5, 5]);
         ctx.lineWidth = 2;
-        ctx.fillRect(this.x + offsetX - 5, this.y + offsetY - 5, width, height);
-        ctx.strokeRect(this.x + offsetX - 5, this.y + offsetY - 5, width, height);
+        ctx.fillRect(x + offsetX - border / 2, y + offsetY - border / 2, width, height);
+        ctx.strokeRect(x + offsetX - border / 2, y + offsetY - border / 2, width, height);
 
         canvas.restoreSettings(settings);
 
         for (let i = 0; i < this.elements.length; i++) {
             const elem = this.elements[i];
-            if (elem) {
+            if (elem != null && elem != undefined) {
                 elem.draw(canvas);
             } else {
                 ctx.fillStyle = this.color;
-                let x = this.x + i * Vector.separation * this.size * zoom;
-                let y = this.y;
-                if (this.display === Display.VERTICAL) [x, y] = [y, x];
-                canvas.getContext()?.fillRect(x + offsetX, y + offsetY, this.size * zoom, this.size * zoom);
+                let _x,_y;
+                if (this.display === Display.HORIZONTAL) {
+                    _x = x + i * Vector.separation * this.size * zoom;
+                    _y = y;
+                } else {
+                    _x = x;
+                    _y = y + i * Vector.separation * this.size * zoom;
+                };
+                canvas.getContext()?.fillRect(_x + offsetX, _y + offsetY, this.size * zoom, this.size * zoom);
             }
         }
         return this;
@@ -405,10 +423,17 @@ export class Vector extends Structure {
     setPos(x: number, y: number) {
         super.setPos(x, y);
         let currentX = x;
-        this.elements.forEach((elem) => {
-            elem?.setPos(currentX, y);
+        let currentY = y;
+        for (let i = 0; i < this.elements.length; i++) {
+            const elem = this.elements[i];
+            if (this.display === Display.HORIZONTAL) {
+                elem?.setPos(currentX, y);
+            } else {
+                elem?.setPos(x, currentY);
+            }
             currentX += this.size * Vector.separation;
-        });
+            currentY += this.size * Vector.separation;
+        }
         return this;
     }
 
@@ -425,6 +450,9 @@ export class Vector extends Structure {
     }
 
     * insert(data: any, value: any = null) {
+        if (this.elements[data]) {
+            return this.elements[data];
+        }
         const newNode = new Node(data, value);
         newNode.setType(NodeType.RECTANGULAR);
         this.elements[data] = newNode;
@@ -439,17 +467,61 @@ export class Vector extends Structure {
     }
 
     * search(key: any) {
-        if (this.elements[key]) {
-            yield this.elements[key];
-        }
-        return null
+        return this.elements[key];
     }
 
     * iterateElements() {
-        for (const elem of this.elements) {
-            yield elem;
+        for (let i = 0; i < this.elements.length; i++) {
+            yield this.elements[i];
         }
         return null;
+    }
+
+    getActions(canvas: Canvas) {
+        return [
+            {
+                name: 'buttons.insert',
+                action: (data: any) => canvas.wrapGenerator(this.insert(data))
+            },
+            {
+                name: 'buttons.remove',
+                action: (data: any) => canvas.wrapGenerator(this.remove(data))
+            },
+            {
+                name: 'buttons.search',
+                action: (data: any) => canvas.wrapGenerator(this.search(data))
+            },
+        ];
+    }
+}
+
+export class StaticVector extends Vector {
+    public readonly type: StructureType = StructureType.STATIC_VECTOR;
+    public static readonly DEFAULT_SIZE = 5;
+    
+    constructor() {
+        super();
+        this.elements = new Array(StaticVector.DEFAULT_SIZE).fill(null);
+    }
+
+    static ofLength(length: number): StaticVector {
+        const vector = new StaticVector();
+        vector.elements = new Array(length).fill(null);
+        for (let i = 0; i < length; i++) {
+            if (i < length * 0.3) {
+                exhaustGenerator(vector.insert(i));
+            }
+        }
+        return vector;
+    }
+
+    // @ts-ignore
+    * insert(data: any, value: any = null) {
+        if (data < this.elements.length) {
+            return yield * super.insert(data, value);
+        } else {
+            return null;
+        }
     }
 
     getActions(canvas: Canvas) {
@@ -474,7 +546,7 @@ export class List extends Structure {
     public type: StructureType = StructureType.LIST;
     public nodeType: NodeType = NodeType.CIRCULAR;
 
-    head: Node | null = null;
+    head: Node | null = null; // new Node(null, null, null)
 
     constructor(public readonly allowDuplicates: boolean = true) {
         super();
@@ -489,10 +561,10 @@ export class List extends Structure {
     }
 
     draw(canvas: Canvas) {
-        let current = this.head;
         this.setPos(this.x, this.y);
         this.setSize(this.size);
         this.setColor(this.color);
+        let current = this.head;
         while (current) {
             current.draw(canvas);
             current.drawPointerToNext(canvas);
@@ -761,6 +833,7 @@ export class Composed extends Structure {
     protected head: Structure | null = null;
     constructor(protected type: StructureType, protected subtype: StructureType) {
         super();
+        this.head = Composed.getNewStructure(type, subtype, true)!;
     }
 
     draw(canvas: Canvas) {
@@ -773,9 +846,10 @@ export class Composed extends Structure {
             elem.value.setDisplay(this.display == Display.VERTICAL ? Display.HORIZONTAL : Display.VERTICAL);
 
             // Assign different shapes to the parent/child nodes if both structures are a List
-            if (this.head instanceof List && elem.value instanceof List)
+            if (this.head instanceof List && elem.value instanceof List) {
                 elem.value.setNodeType(this.head.nodeType == NodeType.CIRCULAR ? NodeType.RECTANGULAR : NodeType.CIRCULAR);
-
+            }
+            
             Composed.drawArrow(canvas, elem.x, elem.y, elem.value.x, elem.value.y, this.size, elem.size);
             elem.value.draw(canvas);
         });
@@ -786,12 +860,12 @@ export class Composed extends Structure {
         super.setPos(x, y);
         this.head?.setPos(x, y);
         this.head?.applyToElements(elem => {
-            if (!(elem instanceof Node)) return ;
-
-            (elem.value as Structure).setPos(
-                elem.x + (this.display == Display.VERTICAL ? this.size * 1.5 : 0),
-                elem.y + (this.display == Display.HORIZONTAL ? this.size * 1.5 : 0)
-            );
+            if ((elem instanceof Node)) {
+                (elem.value as Structure).setPos(
+                    elem.x + (this.display == Display.VERTICAL ? this.size * 1.5 : 0),
+                    elem.y + (this.display == Display.HORIZONTAL ? this.size * 1.5 : 0)
+                );
+            }
         });
         return this;
     }
@@ -810,14 +884,18 @@ export class Composed extends Structure {
 
     * insert(key: any, value: any) {
         if (this.head === null) {
-            this.head = Composed.getNewStructure(this.type, true)!;
-            const l = Composed.getNewStructure(this.subtype, false)!;
+            this.head = Composed.getNewStructure(this.type, this.subtype, true)!;
+            const l = Composed.getNewStructure(this.subtype, undefined, false)!;
             yield * this.head.insert(key, l);
             return yield * l.insert(value, null);
         }
 
-        const l = Composed.getNewStructure(this.subtype, false)!;
+        const l = Composed.getNewStructure(this.subtype, undefined, false)!;
+
         const aux = yield * this.head.insert(key, l);
+        yield aux;
+
+        if (!aux) return aux ;
 
         // If the nested structure had to be added, set it's attr
         if (l != aux.value) {
@@ -869,6 +947,12 @@ export class Composed extends Structure {
 
     static default(t1: StructureType = StructureType.LIST, t2: StructureType = StructureType.LIST): Composed {
         const composed = new Composed(t1, t2);
+        if (t1 == StructureType.STATIC_VECTOR && t2 != StructureType.EMPTY) {
+            composed.head = new StaticVector().setDefaultDrawAttributes();
+            for (let i = 0; i < StaticVector.DEFAULT_SIZE; i++) {
+                exhaustGenerator(composed.head.insert(i, this.getNewStructure(t2, undefined, false)?.setDefaultDrawAttributes()));
+            }
+        }
         exhaustGenerator(composed.insert(0, 0));
         exhaustGenerator(composed.insert(1, 0));
         exhaustGenerator(composed.insert(1, 1));
@@ -878,10 +962,19 @@ export class Composed extends Structure {
         return composed;
     }
 
-    static getNewStructure(type: StructureType, isHead: boolean = false): Structure | undefined {
+    static getNewStructure(type: StructureType, subtype?: StructureType, isHead: boolean = false): Structure | undefined {
         switch (type) {
+            case StructureType.STATIC_VECTOR:
+                if (isHead && subtype) {
+                    const sv = new StaticVector().setDefaultDrawAttributes();
+                    for (let i = 0; i < StaticVector.DEFAULT_SIZE; i++) {
+                        exhaustGenerator(sv.insert(i, this.getNewStructure(subtype, undefined, false)?.setDefaultDrawAttributes()));
+                    }
+                    return sv;
+                }
+                return new StaticVector().setDefaultDrawAttributes();
             case StructureType.VECTOR:
-                return new Vector(5).setDefaultDrawAttributes();
+                return new Vector().setDefaultDrawAttributes();
             case StructureType.LIST:
                 // No not allow duplicates in parent list
                 return new List(!isHead).setDefaultDrawAttributes();
@@ -1163,7 +1256,9 @@ export function createStructure(type: StructureType, subtype?: StructureType): S
     
     switch (type) {
         case StructureType.VECTOR:
-            return new Vector(5).setDefaultDrawAttributes();
+            return new Vector().setDefaultDrawAttributes();
+        case StructureType.STATIC_VECTOR:
+            return new StaticVector().setDefaultDrawAttributes();
         case StructureType.LIST:
             return new List().setDefaultDrawAttributes();
         case StructureType.QUEUE:
@@ -1182,10 +1277,6 @@ export function createStructure(type: StructureType, subtype?: StructureType): S
 }
 
 export function createDefaultStructure(type: StructureType, subtype?: StructureType): Structure | undefined {
-    if ( subtype == StructureType.VECTOR ) {
-        return undefined ; // @todo : Not implemented yet
-    }
-
     if ( subtype != undefined && subtype != StructureType.EMPTY) {
         return Composed.default(type, subtype).setDefaultDrawAttributes();
     }
@@ -1193,6 +1284,8 @@ export function createDefaultStructure(type: StructureType, subtype?: StructureT
     switch (type) {
         case StructureType.VECTOR:
             return Vector.ofLength(5).setDefaultDrawAttributes();
+        case StructureType.STATIC_VECTOR:
+            return StaticVector.ofLength(5).setDefaultDrawAttributes();
         case StructureType.LIST:
             return List.ofLength(3).setDefaultDrawAttributes();
         case StructureType.QUEUE:

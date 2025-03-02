@@ -117,6 +117,7 @@ export default function Home() {
 		const elem = createStructure(...dataStructureSelection)!;
 		canvas.replaceElements(elem);
 		setActions(elem?.getActions(canvas) || []);
+		canvas.render();
 	}, [dataStructureSelection]);
 
 	useEffect(() => {
@@ -150,9 +151,11 @@ export default function Home() {
 			case 'New':
 			case 'Clear':
 				elem = createStructure(...dataStructureSelection)!;
+				console.log(elem);
 				break;
 			case 'Default':
 				elem = createDefaultStructure(...dataStructureSelection)!;
+				console.log(elem);
 				break;
 			default:
 			break;
