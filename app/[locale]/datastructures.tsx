@@ -192,8 +192,25 @@ export abstract class DrawableElement {
             toSize *= zoom;
 
             ctx.strokeStyle = 'rgb(0, 0, 0)';
-            const diffX = tox - fromx;
+            let diffX = tox - fromx;
             const diffY = toy - fromy;
+
+            // Draw a horizontal line and then subtract the horizontal distance from the arrow to be drawn
+            // So that the arrow begins to be drawn where the horizontal line ends
+            const angle = Math.abs(Math.atan2(diffY, diffX))
+            if (angle * 57.29577 >= 10) {
+                tox += toSize / 2;
+                diffX += toSize / 2;
+                const len = diffX - fromSize;
+                ctx.beginPath();
+                ctx.moveTo(fromx + offsetX + fromSize / 2 , fromy + offsetY + fromSize / 2);
+                ctx.lineTo(fromx + len + offsetX + fromSize, fromy + offsetY + fromSize / 2);
+                ctx.stroke();
+                fromx += len;
+                toy += (Vector.border_size * zoom + toSize / 2) * (diffY < 0 ? 1 : -1);
+            } else {
+                tox -= Vector.border_size;
+            }
             
             if (Math.abs(diffX) < 0.001) {
                 if (diffY > 0) {
@@ -464,7 +481,6 @@ export class Vector extends Structure {
 
     * remove(key: any) {
         if (key >= 0 && key < this.elements.length && this.elements[key]) {
-            const elem = this.elements[key];
             this.elements[key] = null;
             return true;
         }
@@ -1039,6 +1055,8 @@ export abstract class ADT extends Structure {
     structure: Structure | null = null;
     protected drawStructure = false;
     protected elemCount = 0;
+    protected iterator: Generator<DrawableElement | null, any, any> | null = null;
+    protected current: Node | null = null;
 
     constructor() {
         super();
@@ -1050,7 +1068,7 @@ export abstract class ADT extends Structure {
             {
                 name: 'buttons.insert',
                 modifier: modifiers[0]!,
-                action: (data: any, value: any) => canvas.wrapGenerator(this.insert(data))
+                action: (data: any) => canvas.wrapGenerator(this.insert(data))
             },
             {
                 name: 'buttons.remove',
@@ -1098,7 +1116,7 @@ export abstract class ADT extends Structure {
         ctx.fillText(title, x + width * zoom / 2, y + 25 * zoom);
     }
 
-    drawField(canvas: Canvas, x: number, y: number, width: number, height: number, label: string, value: string | DrawableElement) {
+    drawField(canvas: Canvas, x: number, y: number, width: number, height: number, label: string, value: string | DrawableElement | null) {
         const prev = canvas.preserveSettings();
         const ctx = canvas.getContext()!;
         const zoom = canvas.getZoom();
@@ -1141,7 +1159,7 @@ export abstract class ADT extends Structure {
                 ctx.fillText('NOT IMPLEMENTED', transformedX + width - padding, transformedY + height / 2 + padding);
             }
         } else {
-            ctx.fillText(value, transformedX + width - padding, transformedY + height / 2 + padding);
+            ctx.fillText(value?.toString() || "undefined", transformedX + width - padding, transformedY + height / 2 + padding);
         }
 
         canvas.restoreSettings(prev);
@@ -1202,6 +1220,16 @@ export abstract class ADT extends Structure {
         if (!this.structure) return ;
         return yield * this.structure.iterateElements();
     }
+
+    beginIterator() {
+        this.iterator = this.iterateElements();
+        this.current = this.iterator.next().value;
+    }
+
+    iteratorNext() {
+        this.current = this.iterator?.next().value;
+    }
+}
 
 export class ListADT extends ADT {
     protected type: StructureType = StructureType.LISTADT;
