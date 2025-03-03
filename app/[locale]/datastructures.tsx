@@ -1115,7 +1115,10 @@ export abstract class ADT extends Structure {
             {
                 name: 'buttons.remove',
                 modifier: modifiers[1]!,
-                action: (data: any) => canvas.wrapGenerator(this.remove(data))
+                action: (data: any) => {
+                    this.iteratorReset();
+                    canvas.wrapGenerator(this.remove(data))
+                }
             },
             {
                 name: 'buttons.search',
@@ -1289,6 +1292,11 @@ export abstract class ADT extends Structure {
 
     iteratorNext() {
         this.current = this.iterator?.next().value;
+    }
+
+    iteratorReset() {
+        this.current = null;
+        this.iterator = null;
     }
 }
 

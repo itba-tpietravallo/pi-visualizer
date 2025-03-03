@@ -138,7 +138,7 @@ export default function Menu({
                     defaultValue={dataStructureSelection[1]}
                     className="border border-1 border-black rounded px-2 disabled:bg-gray-400 disabled:opacity-20"
                     onChange={(event) => handleSelect(event, 'structure2')}
-                    disabled={paused}
+                    disabled={paused || !composable.includes(dataStructureSelection[0])}
                 >
                     <option value={StructureType.EMPTY}>{StructureType.EMPTY}</option>
                     <optgroup label='1er parcial'>
