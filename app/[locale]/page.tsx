@@ -11,7 +11,7 @@ export default function Home() {
 	const startDragOffset = useRef({ x: 0, y: 0 });
 	const startZoom = useRef(1);
 
-	const canvas = useMemo(() => new Canvas(canvasRef.current?.getContext('2d')!), [canvasRef]);
+	const canvas = useMemo(() => new Canvas(canvasRef.current?.getContext('2d')!), [canvasRef.current]);
 
 	const [ origin, setOrigin ] = useState({ x: 0, y: 0 });
 	const [ isDragging, setIsDragging ] = useState(false);
