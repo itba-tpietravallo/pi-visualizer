@@ -34,7 +34,9 @@
         "---": "---",
         "ListADT": "ListADT",
         "QueueADT": "QueueADT",
-        "StackADT": "StackADT"
+        "StackADT": "StackADT",
+        "VectorADT": "VectorADT",
+        "StaticVectorADT": "StaticVectorADT"
     },
     "about": {
         "abstract-data-types": "Tipos Abstractos de Datos",

@@ -268,6 +268,8 @@ export enum StructureType {
     LISTADT = 'ListADT',
     QUEUEADT = 'QueueADT',
     STACKADT = 'StackADT',
+    VECTORADT = 'VectorADT',
+    STATIC_VECTORADT = 'StaticVectorADT',
     EMPTY = '---',
 }
 
@@ -380,6 +382,7 @@ export class Vector extends Structure {
         this.setSize(this.size);
         this.setColor(this.color);
         const ctx = canvas.getContext()!;
+        if (!ctx) throw new Error('Canvas context is null. Catastrophic');
         const [ offsetX, offsetY ] = canvas.getOffset();
         const zoom = canvas.getZoom();
         const size = this.size * zoom;
@@ -460,10 +463,12 @@ export class Vector extends Structure {
     }
 
     * remove(key: any) {
-        if (this.elements[key])
-            yield this.elements[key];
-        this.elements[key] = null;
-        return key < this.elements.length;
+        if (key >= 0 && key < this.elements.length && this.elements[key]) {
+            const elem = this.elements[key];
+            this.elements[key] = null;
+            return true;
+        }
+        return false;
     }
 
     * search(key: any) {
@@ -521,7 +526,8 @@ export class StaticVector extends Vector {
     // @ts-expect-error eslint
     * insert(data: any, value: any = null) {
         if (data < this.elements.length) {
-            return yield * super.insert(data, value);
+            const s = yield * super.insert(data, value);
+            return s;
         } else {
             return null;
         }
@@ -1032,17 +1038,39 @@ export abstract class ADT extends Structure {
     title: string = 'ADT Title';
     structure: Structure | null = null;
     protected drawStructure = false;
+    protected elemCount = 0;
 
     constructor() {
         super();
     }
     
-    getActions(canvas: Canvas): { name: string, modifier?: string[], action: (data: any) => void }[] {
-        return this.structure?.getActions(canvas)!;
+    getActions(canvas: Canvas): { name: string, modifier?: string[], action: (...data: any[]) => void }[] {
+        const modifiers = this.structure?.getActions(canvas).map(a => a.modifier)!;
+        return [
+            {
+                name: 'buttons.insert',
+                modifier: modifiers[0]!,
+                action: (data: any, value: any) => canvas.wrapGenerator(this.insert(data))
+            },
+            {
+                name: 'buttons.remove',
+                modifier: modifiers[1]!,
+                action: (data: any) => canvas.wrapGenerator(this.remove(data))
+            },
+            {
+                name: 'buttons.search',
+                modifier: modifiers[2]!,
+                action: (data: any) => canvas.wrapGenerator(this.search(data))
+            }
+        ]
     }
 
-    getFields(): { label: string, value: string | DrawableElement }[] {
-        return [];
+    getFields() {
+        return [
+            { label: 'elems', value: this.structure! },
+            { label: 'size', value: this.elemCount.toString() },
+            { label: 'iter', value: this.current }
+        ];
     }
     
     applyToElements(fn: (elem: DrawableElement) => void) {
@@ -1106,9 +1134,9 @@ export abstract class ADT extends Structure {
                     value.setSize(50);
                     Node.drawArrow(canvas, x + width / zoom - 30, y, value.x, value.y, height / zoom, value.size);
                     value.draw(canvas);
-                };
+                }
             } else if (value instanceof Node) {
-                Node.drawArrow(canvas, x + width / zoom - 30, y, value.x, value.y, height / zoom, value.size);
+                Node.drawArrow(canvas, x + width / zoom - 15, y, value.x, value.y, height / zoom, value.size);
             } else {
                 ctx.fillText('NOT IMPLEMENTED', transformedX + width - padding, transformedY + height / 2 + padding);
             }
@@ -1149,56 +1177,20 @@ export abstract class ADT extends Structure {
         canvas.restoreSettings(prev);
 
         return this;
-    } 
-}
-
-export class ListADT extends ADT {
-    protected type: StructureType = StructureType.LISTADT;
-    protected elemCount = 0;
-
-    constructor() {
-        super();
-        this.title = 'ListADT';
-        this.structure = new List().setDefaultDrawAttributes();
-    }
-
-    getFields() {
-        return [
-            { label: 'elems', value: this.structure! },
-            { label: 'size', value: this.elemCount.toString() },
-            { label: 'iter', value: null } as any
-        ];
-    }
-
-    getActions(canvas: Canvas) {
-        return [
-            {
-                name: 'buttons.insert',
-                action: (data: any) => canvas.wrapGenerator(this.insert(data))
-            },
-            {
-                name: 'buttons.remove',
-                action: (data: any) => canvas.wrapGenerator(this.remove(data))
-            },
-            {
-                name: 'buttons.search',
-                modifier: ['linear'],
-                action: (data: any) => canvas.wrapGenerator(this.search(data))
-            },
-        ];
     }
 
     * insert(data: any, value: any = null) {
         this.drawStructure = true;
+        const has = exhaustGenerator(this.structure!.search(data));
         const node = yield * this.structure!.insert(data, value);
-        this.elemCount++;
+        if (!has && node != undefined && node != null) this.elemCount++;
         return node;
     }
 
     * remove(data?: any) {
         const nodeRemoved = yield * this.structure!.remove(data);
         if (nodeRemoved) this.elemCount--;
-        if (this.elemCount == 0) this.drawStructure = false
+        if (this.elemCount == 0) this.drawStructure = false;
         return nodeRemoved;
     }
 
@@ -1209,6 +1201,15 @@ export class ListADT extends ADT {
     * iterateElements() {
         if (!this.structure) return ;
         return yield * this.structure.iterateElements();
+    }
+
+export class ListADT extends ADT {
+    protected type: StructureType = StructureType.LISTADT;
+
+    constructor() {
+        super();
+        this.title = this.type;
+        this.structure = new List().setDefaultDrawAttributes();
     }
 
     static ofLength(length: number) {
@@ -1225,28 +1226,7 @@ export class QueueADT extends ListADT {
 
     constructor() {
         super();
-        this.title = 'QueueADT';
         this.structure = new Queue().setDefaultDrawAttributes();
-    }
-
-    getActions(canvas: Canvas): { name: string, modifier?: string[], action: (data: any) => void }[] {
-        return [
-            {
-                name: 'buttons.insert',
-                modifier: ['last'],
-                action: (data: any) => canvas.wrapGenerator(this.insert(data))
-            },
-            {
-                name: 'buttons.remove',
-                modifier: ['first'],
-                action: () => canvas.wrapGenerator(this.remove())
-            },
-            {
-                name: 'buttons.search',
-                modifier: ['linear'],
-                action: (data: any) => canvas.wrapGenerator(this.search(data))
-            }
-        ];
     }
 
     static ofLength(length: number) {
@@ -1263,28 +1243,7 @@ export class StackADT extends ListADT {
 
     constructor() {
         super();
-        this.title = 'StackADT';
         this.structure = new Stack().setDefaultDrawAttributes();
-    }
-
-    getActions(canvas: Canvas): { name: string, modifier?: string[], action: (data: any) => void }[] {
-        return [
-            {
-                name: 'buttons.insert',
-                modifier: ['first'],
-                action: (data: any) => canvas.wrapGenerator(this.insert(data))
-            },
-            {
-                name: 'buttons.remove',
-                modifier: ['first'],
-                action: () => canvas.wrapGenerator(this.remove())
-            },
-            {
-                name: 'buttons.search',
-                modifier: ['linear'],
-                action: (data: any) => canvas.wrapGenerator(this.search(data))
-            }
-        ];
     }
 
     static ofLength(length: number) {
@@ -1293,6 +1252,48 @@ export class StackADT extends ListADT {
             exhaustGenerator(stack.insert(i));
         }
         return stack;
+    }
+}
+
+export class VectorADT extends ADT {
+    structure: Structure | null = null;
+    protected type: StructureType = StructureType.VECTORADT;
+
+    constructor() {
+        super();
+        this.title = this.type;
+        this.structure = new Vector().setDefaultDrawAttributes();
+    }
+
+    static ofLength(length: number) {
+        const vector = new VectorADT();
+        for (let i = 0; i < length; i++) {
+            exhaustGenerator(vector.insert(i));
+        }
+        return vector;
+    }
+}
+
+export class StaticVectorADT extends VectorADT {
+    structure: Structure | null;
+    protected type: StructureType = StructureType.STATIC_VECTORADT;
+
+    constructor() {
+        super();
+        this.title = this.type;
+        this.structure = new StaticVector().setDefaultDrawAttributes();
+    }
+
+    static ofLength(length: number) {
+        if (length > StaticVector.DEFAULT_SIZE) {
+            throw new Error(`StaticVectorADT can only have a maximum length of ${StaticVector.DEFAULT_SIZE}`);
+        }
+
+        const vector = new StaticVectorADT();
+        for (let i = 0; i < length; i++) {
+            exhaustGenerator(vector.insert(i));
+        }
+        return vector;
     }
 }
 
@@ -1318,6 +1319,10 @@ export function createStructure(type: StructureType, subtype?: StructureType): S
             return new QueueADT().setDefaultDrawAttributes();
         case StructureType.STACKADT:
             return new StackADT().setDefaultDrawAttributes();
+        case StructureType.VECTORADT:
+            return new VectorADT().setDefaultDrawAttributes();
+        case StructureType.STATIC_VECTORADT:
+            return new StaticVectorADT().setDefaultDrawAttributes();
         default:
             return undefined;
     }
@@ -1330,7 +1335,7 @@ export function createDefaultStructure(type: StructureType, subtype?: StructureT
 
     switch (type) {
         case StructureType.VECTOR:
-            return Vector.ofLength(5).setDefaultDrawAttributes();
+            return Vector.ofLength(3).setDefaultDrawAttributes();
         case StructureType.STATIC_VECTOR:
             return StaticVector.ofLength(5).setDefaultDrawAttributes();
         case StructureType.LIST:
@@ -1345,6 +1350,10 @@ export function createDefaultStructure(type: StructureType, subtype?: StructureT
             return QueueADT.ofLength(3).setDefaultDrawAttributes();
         case StructureType.STACKADT:
             return StackADT.ofLength(3).setDefaultDrawAttributes();
+        case StructureType.VECTORADT:
+            return VectorADT.ofLength(5).setDefaultDrawAttributes();
+        case StructureType.STATIC_VECTORADT:
+            return StaticVectorADT.ofLength(3).setDefaultDrawAttributes();
         default:
             return undefined;
     }

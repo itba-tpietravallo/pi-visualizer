@@ -39,7 +39,11 @@ export default function Menu({
             setShowSecondInput(event.target.value !== "---");
             if (event.target.value === "---") setInputValue2(0);
         } else {
-            if (event.target.value != StructureType.LIST) select2.current!.value = StructureType.EMPTY;
+            if (event.target.value != StructureType.LIST) {
+                select2.current!.value = StructureType.EMPTY;
+                setInputValue2(0);
+                setShowSecondInput(false);
+            };
         }
         handleSelectChange?.call(null, [select1.current!.value as StructureType, select2.current!.value as StructureType]);
     };
