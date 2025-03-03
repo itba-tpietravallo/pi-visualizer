@@ -258,6 +258,7 @@ export abstract class DrawableElement {
 }
 
 export abstract class Structure extends DrawableElement {
+    public readonly allowDuplicates: boolean = true;
     protected abstract type: StructureType;
     protected display: Display = Display.HORIZONTAL;
     protected performActionInPlace: boolean = false;
@@ -551,6 +552,10 @@ export class Vector extends Structure {
             },
         ];
     }
+
+    getLength() {
+        return this.elements.length;
+    }
 }
 
 export class StaticVector extends Vector {
@@ -838,6 +843,10 @@ export class Queue extends List {
             }
         ];
     }
+
+    getLast() {
+        return this.last;
+    }
 }
 
 export class Stack extends List {
@@ -1092,7 +1101,7 @@ export class Composed extends Structure {
 }
 
 export abstract class ADT extends Structure {
-    title: string = 'ADT Title';
+    title: string | undefined;
     structure: Structure | null = null;
     protected drawStructure = false;
     protected elemCount = 0;
@@ -1145,7 +1154,7 @@ export abstract class ADT extends Structure {
     getFields() {
         return [
             { label: 'elems', value: this.structure! },
-            { label: 'size', value: this.elemCount.toString() },
+            { label: 'elemCount', value: this.elemCount.toString() },
             { label: 'iter', value: this.current }
         ];
     }
@@ -1241,7 +1250,7 @@ export abstract class ADT extends Structure {
         const height = 50 + fields.length * (fieldHeight + 5);
   
         // Draw the main rectangle
-        this.drawContainer(canvas, x * zoom + offsetX, y * zoom + offsetY, this.size, height, this.title);
+        this.drawContainer(canvas, x * zoom + offsetX, y * zoom + offsetY, this.size, height, this.title || this.type);
   
         // Draw each field inside the main rectangle
         let currentY = y + 40; // Starting position for fields
@@ -1260,7 +1269,7 @@ export abstract class ADT extends Structure {
         this.drawStructure = true;
         const has = exhaustGenerator(this.structure!.search(data));
         const node = yield * this.structure!.insert(data, value);
-        if (!has && node != undefined && node != null) this.elemCount++;
+        if ( (this.allowDuplicates && node) || (!has && node != undefined && node != null)) this.elemCount++;
         return node;
     }
 
@@ -1305,7 +1314,6 @@ export class ListADT extends ADT {
 
     constructor() {
         super();
-        this.title = this.type;
         this.structure = new List().setDefaultDrawAttributes();
     }
 
@@ -1324,6 +1332,12 @@ export class QueueADT extends ListADT {
     constructor() {
         super();
         this.structure = new Queue().setDefaultDrawAttributes();
+    }
+
+    getFields(): ({ label: string; value: Structure; } | { label: string; value: string; } | { label: string; value: Node | null; })[] {
+        return super.getFields().concat([
+            { label: 'last', value: (this.structure as Queue).getLast() }
+        ]);
     }
 
     static ofLength(length: number) {
@@ -1350,6 +1364,16 @@ export class StackADT extends ListADT {
         }
         return stack;
     }
+
+    getFields() {
+        return super.getFields().map((f) => {
+            if (f.label == 'elems') {
+                f.label = 'first';
+            }
+
+            return f;
+        });
+    }
 }
 
 export class VectorADT extends ADT {
@@ -1358,8 +1382,8 @@ export class VectorADT extends ADT {
 
     constructor() {
         super();
-        this.title = this.type;
         this.structure = new Vector().setDefaultDrawAttributes();
+        this.drawStructure = true;
     }
 
     static ofLength(length: number) {
@@ -1369,6 +1393,18 @@ export class VectorADT extends ADT {
         }
         return vector;
     }
+
+    getFields(): ({ label: string; value: Structure; } | { label: string; value: string; } | { label: string; value: Node | null; })[] {
+        return super.getFields().concat([
+            { label: 'size', value: (this.structure as Vector).getLength().toString() }
+        ]);
+    }
+
+    * remove(data: any) {
+        const ret = yield * super.remove(data);
+        this.drawStructure = true;
+        return ret;
+    }
 }
 
 export class StaticVectorADT extends VectorADT {
@@ -1377,7 +1413,6 @@ export class StaticVectorADT extends VectorADT {
 
     constructor() {
         super();
-        this.title = this.type;
         this.structure = new StaticVector().setDefaultDrawAttributes();
     }
 
