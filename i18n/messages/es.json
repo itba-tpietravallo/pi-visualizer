@@ -1,5 +1,6 @@
 {
     "title": "Visualizador de estructuras de datos",
+    "mobile-warning": "Esta página no está optimizada para dispositivos móviles. Por favor, usa un navegador de escritorio para la mejor experiencia.",
     "buttons": {
         "speed": "Velocidad",
         "origin": "Origen",

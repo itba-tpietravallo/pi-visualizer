@@ -1,5 +1,6 @@
 {
     "title": "Data structures visualizer",
+    "mobile-warning": "This page is not optimized for mobile devices. Please use a desktop browser for the best experience.",
     "buttons": {
         "speed": "Speed",
         "origin": "Origin",

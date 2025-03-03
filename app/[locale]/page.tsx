@@ -22,6 +22,7 @@ export default function Home() {
 	const [ dataStructureSelection, setDataStructureSelection ] = useState([StructureType.LIST, StructureType.EMPTY] as [StructureType, StructureType]);
 	const [ actions, setActions ] = useState<ReturnType<Structure["getActions"]>>([]);
 	const [ showPointers, setShowPointers ] = useState(false);
+	const [ displayMobileWarning, setDisplayMobileWarning ] = useState(true);
 
 	useLayoutEffect(() => {
 		function updateSize() {
@@ -177,6 +178,13 @@ export default function Home() {
 	});
 
 	return (
+		<>
+		<div data-display-warning={displayMobileWarning.toString()} className="w-full h-screen flex flex-col md:hidden data-[display-warning=false]:hidden items-center justify-center text-2xl">
+			<div className="text-4xl">🚧</div>
+			<p className="text-center">{ t('mobile-warning') }</p>
+			<a className="border border-black p-1 px-3 rounded-lg bg-yellow-400/20 mt-4 cursor-pointer" onClick={() => setDisplayMobileWarning(false)}>I understand, proceed anyways</a>
+		</div>
+
 		<main className="min-h-full w-full flex flex-col gap-y-4 bg-white/50 backdrop-blur rounded p-4">
 			<h1 className="text-xl">{ t('title') }</h1>
 
@@ -184,7 +192,7 @@ export default function Home() {
 
 			<div className="flex flex-col justify-center items-center">
 				<Menu 
-					className="pb-2"
+					className="pb-2 max-w-full"
 					inputValue1={inputValue1}
 					inputValue2={inputValue2}
 					setInputValue1={setInputValue1}
@@ -268,5 +276,6 @@ export default function Home() {
 			
 			<p>{ t('created-by') }</p>
 		</main>
+		</>
 	);
 }
