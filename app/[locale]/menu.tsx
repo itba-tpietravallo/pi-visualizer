@@ -67,45 +67,10 @@ export default function Menu({
 
     return (
         <div id="menu" className={className}>
-            <div id="data-input" className="flex flex-row gap-x-2 m-2 max-w-full flex-wrap">
-                <input
-                    disabled={paused}
-                    className="border border-1 border-black rounded px-2 w-12 bg:white disabled:bg:gray disabled:opacity-20"
-                    type="text"
-                    inputMode="numeric"
-                    pattern="[0-9]+"
-                    value={inputValue1}
-                    onChange={e  => handleInput(e,1)}
-                    onKeyDown={(event) => {
-                        if (!/[0-9]/.test(event.key) && !['Backspace', 'Delete', 'ArrowLeft', 'ArrowRight'].includes(event.key)) {
-                            event.preventDefault();
-                        }
-                    }}
-                />
-                <input
-                    disabled={!showSecondInput || paused}
-                    className="border border-1 border-black rounded px-2 w-12 bg:white disabled:bg:gray disabled:opacity-20"
-                    type="text"
-                    inputMode="numeric"
-                    pattern="[0-9]+"
-                    value={inputValue2}
-                    onChange={e => handleInput(e,2)}
-                    onKeyDown={(event) => {
-                        if (!/[0-9]/.test(event.key) && !['Backspace', 'Delete', 'ArrowLeft', 'ArrowRight'].includes(event.key)) {
-                            event.preventDefault();
-                        }
-                    }}
-                />
-                {
-                    actions.map((action, index) => (
-                        <button disabled={paused} key={index} className="border border-1 border-black rounded px-2 disabled:bg-gray-400 disabled:opacity-20" onClick={ () => action.action(inputValue1, inputValue2) }>{t(action.name)}{ action.modifier?.filter(a => a).length ? ` (${action.modifier.map(m => t(`action-modifier.${m}`)).join(`, ${t(`action-modifier.then`)} `)})` : "" }</button>
-                    ))
-                }
-                <button disabled={paused} className="border border-1 border-black rounded px-2 disabled:bg-gray-400 disabled:opacity-20" onClick={() => handleButtonClick?.call(null, 'Clear')}>{t('buttons.clear')}</button>
-            </div>
-            <div id="structure-selection" className="flex flex-row gap-x-2 m-2 flex-wrap">
+                        <div id="structure-selection" className="flex flex-row gap-x-2 m-2 flex-wrap">
                 {/* <button className="border border-1 border-black rounded px-2" onClick={() => handleButtonClick?.call(null, 'New')}>New</button> */}
                 <button disabled={paused} className="border border-1 border-black rounded px-2 disabled:bg-gray-400 disabled:opacity-20" onClick={() => handleButtonClick?.call(null, 'Default')}>{t('buttons.create-default')}</button>
+                <button disabled={paused} className="border border-1 border-black rounded px-2 disabled:bg-gray-400 disabled:opacity-20" onClick={() => handleButtonClick?.call(null, 'Clear')}>{t('buttons.clear')}</button>
                 <select
                     ref={select1}
                     defaultValue={dataStructureSelection[0]}
@@ -173,6 +138,41 @@ export default function Menu({
                     }
                     </optgroup>
                 </select>
+            </div>
+            <div id="data-input" className="flex flex-row gap-x-2 m-2 max-w-full flex-wrap">
+                <input
+                    disabled={paused}
+                    className="border border-1 border-black rounded px-2 w-12 bg:white disabled:bg:gray disabled:opacity-20"
+                    type="text"
+                    inputMode="numeric"
+                    pattern="[0-9]+"
+                    value={inputValue1}
+                    onChange={e  => handleInput(e,1)}
+                    onKeyDown={(event) => {
+                        if (!/[0-9]/.test(event.key) && !['Backspace', 'Delete', 'ArrowLeft', 'ArrowRight'].includes(event.key)) {
+                            event.preventDefault();
+                        }
+                    }}
+                />
+                <input
+                    disabled={!showSecondInput || paused}
+                    className="border border-1 border-black rounded px-2 w-12 bg:white disabled:bg:gray disabled:opacity-20"
+                    type="text"
+                    inputMode="numeric"
+                    pattern="[0-9]+"
+                    value={inputValue2}
+                    onChange={e => handleInput(e,2)}
+                    onKeyDown={(event) => {
+                        if (!/[0-9]/.test(event.key) && !['Backspace', 'Delete', 'ArrowLeft', 'ArrowRight'].includes(event.key)) {
+                            event.preventDefault();
+                        }
+                    }}
+                />
+                {
+                    actions.map((action, index) => (
+                        <button disabled={paused} key={index} className="border border-1 border-black rounded px-2 disabled:bg-gray-400 disabled:opacity-20" onClick={ () => action.action(inputValue1, inputValue2) }>{t(action.name)}{ action.modifier?.filter(a => a).length ? ` (${action.modifier.map(m => t(`action-modifier.${m}`)).join(`, ${t(`action-modifier.then`)} `)})` : "" }</button>
+                    ))
+                }
             </div>
         </div>
     );
