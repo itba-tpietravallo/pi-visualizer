@@ -6,12 +6,14 @@ export class Canvas {
     private ctx: CanvasRenderingContext2D | null = null;
     private intervalMS = 200;
     private lastTimerResolve: ((value: unknown) => void) | null = null;
+    private drawPointers: boolean = false;
 
     constructor(ctx: CanvasRenderingContext2D) {
         this.ctx = ctx;
     }
 
     addElement(element: DrawableElement) {
+        element.showPointers(this.drawPointers);
         this.elements.push(element);
     }
 
@@ -22,6 +24,7 @@ export class Canvas {
 
     replaceElements(...elements: DrawableElement[]) {
         this.elements = elements;
+        this.showPointers(this.drawPointers);
         this.render();
     }
 
@@ -138,6 +141,11 @@ export class Canvas {
         }
         return null;
     }
+
+    showPointers(bool: boolean) {
+        this.drawPointers = bool;
+        this.elements.forEach((element) => element.showPointers(bool));
+    }
 }
 
 export abstract class DrawableElement {
@@ -146,6 +154,7 @@ export abstract class DrawableElement {
     public size: number = 0;
     protected color: string = '';
     protected highlight: boolean = false;
+    protected drawPointers: boolean = false;
 
     abstract draw(canvas: Canvas): DrawableElement;
 
@@ -178,6 +187,10 @@ export abstract class DrawableElement {
         return this;
     }
 
+    showPointers(bool: boolean) {
+        this.drawPointers = bool;
+    }
+
     static drawArrow(Canvas: Canvas, fromx: number, fromy: number, tox: number, toy: number, fromSize: number, toSize: number) {
         if (Canvas && Canvas.getContext()) {
             const zoom = Canvas.getZoom();
@@ -197,8 +210,8 @@ export abstract class DrawableElement {
 
             // Draw a horizontal line and then subtract the horizontal distance from the arrow to be drawn
             // So that the arrow begins to be drawn where the horizontal line ends
-            const angle = Math.abs(Math.atan2(diffY, diffX))
-            if (angle * 57.29577 >= 10) {
+            const angle = Math.abs(Math.atan2((toy + toSize / 2) - (fromy + fromSize / 2), (tox + toSize / 2) - (fromx + fromSize / 2)))
+            if (angle * 57.29577 >= 5) {
                 tox += toSize / 2;
                 diffX += toSize / 2;
                 const len = diffX - fromSize;
@@ -341,13 +354,13 @@ export class Node extends DrawableElement {
         ctx.strokeStyle = this.highlight ? 'rgb(255,0,0)' : ctx.fillStyle;
         ctx.lineWidth = 3;
 
-        if (this.type === NodeType.CIRCULAR) {
+        if (this.type === NodeType.CIRCULAR && !this.drawPointers) {
             ctx.beginPath();
             ctx.arc(x + size / 2 + offsetX, y + size / 2 + offsetY, size / 2, 0, 2 * Math.PI);
             ctx.closePath();
             ctx.fill();
             ctx.stroke();
-        } else if (this.type === NodeType.RECTANGULAR) {
+        } else if (this.type === NodeType.RECTANGULAR || this.drawPointers) {
             ctx.fillRect(x + offsetX, y + offsetY, size, size);
             ctx.strokeRect(x + offsetX, y + offsetY, size, size);
         }
@@ -355,8 +368,20 @@ export class Node extends DrawableElement {
         ctx.fillStyle = 'rgb(255, 255, 255)';
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
-        ctx.font = `${Math.ceil(20 * zoom * 10) / 10}px Arial`;
-        ctx.fillText(this.toString(), x + size / 2 + offsetX, y + size / 2 + offsetY);
+        
+        if (this.drawPointers) {
+            let fontSize = 16 * zoom;
+            ctx.font = `${Math.ceil(fontSize * 10) / 10}px Arial`;
+            ctx.fillText(`value: ${this.toString()}`, x + size / 2 + offsetX, y + size / 2 - fontSize / 2 + offsetY);
+            
+            fontSize *= 0.6;
+            ctx.font = `${Math.ceil(fontSize * 10) / 10}px Arial`;
+            ctx.fillText(`next: ${ !this.next ? "null" : `&Node<${this.next.toString()}>` }`, x + size / 2 + offsetX, y + size / 2 + fontSize / 2 + offsetY);
+        } else {
+            let fontSize = 20 * zoom;
+            ctx.font = `${Math.ceil(fontSize * 10) / 10}px Arial`;
+            ctx.fillText(this.toString(), x + size / 2 + offsetX, y + size / 2 + offsetY);
+        }
 
         Canvas.restoreSettings(prev);
 
@@ -368,6 +393,8 @@ export class Node extends DrawableElement {
             Node.drawArrow(canvas, this.x, this.y, this.next.x, this.next.y, this.size, this.next.size);
         }
     }
+
+
 }
 
 export class Vector extends Structure {
@@ -398,6 +425,7 @@ export class Vector extends Structure {
         this.setPos(this.x, this.y);
         this.setSize(this.size);
         this.setColor(this.color);
+        this.showPointers(this.drawPointers);
         const ctx = canvas.getContext()!;
         if (!ctx) throw new Error('Canvas context is null. Catastrophic');
         const [ offsetX, offsetY ] = canvas.getOffset();
@@ -466,6 +494,12 @@ export class Vector extends Structure {
     setSize(size: number) {
         super.setSize(size);
         this.elements.forEach((elem) => elem?.setSize(size));
+        return this;
+    }
+
+    showPointers(bool: boolean) {
+        super.showPointers(bool);
+        this.elements.forEach((elem) => elem?.showPointers(bool));
         return this;
     }
 
@@ -592,6 +626,7 @@ export class List extends Structure {
         this.setPos(this.x, this.y);
         this.setSize(this.size);
         this.setColor(this.color);
+        this.showPointers(this.drawPointers);
         let current = this.head;
         while (current) {
             current.draw(canvas);
@@ -627,6 +662,12 @@ export class List extends Structure {
     setSize(size: number) {
         super.setSize(size);
         this.applyToElements((elem) => elem.setSize(size));
+        return this;
+    }
+
+    showPointers(bool: boolean) {
+        super.showPointers(bool);
+        this.applyToElements((elem) => elem.showPointers(bool));
         return this;
     }
 
@@ -1057,6 +1098,7 @@ export abstract class ADT extends Structure {
     protected elemCount = 0;
     protected iterator: Generator<DrawableElement | null, any, any> | null = null;
     protected current: Node | null = null;
+    protected drawPointers: boolean = false;
 
     constructor() {
         super();
@@ -1221,7 +1263,12 @@ export abstract class ADT extends Structure {
         return yield * this.structure.iterateElements();
     }
 
-    beginIterator() {
+    showPointers(bool: boolean): void {
+        this.drawPointers = bool;
+        this.structure?.showPointers(bool);
+    }
+
+    iteratorBegin() {
         this.iterator = this.iterateElements();
         this.current = this.iterator.next().value;
     }

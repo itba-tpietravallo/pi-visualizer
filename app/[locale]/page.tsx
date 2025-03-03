@@ -21,6 +21,7 @@ export default function Home() {
 	const [ inputValue2, setInputValue2 ] = useState(0);
 	const [ dataStructureSelection, setDataStructureSelection ] = useState([StructureType.LIST, StructureType.EMPTY] as [StructureType, StructureType]);
 	const [ actions, setActions ] = useState<ReturnType<Structure["getActions"]>>([]);
+	const [ showPointers, setShowPointers ] = useState(false);
 
 	useLayoutEffect(() => {
 		function updateSize() {
@@ -144,6 +145,11 @@ export default function Home() {
 			}
 	}, []);
 
+	useEffect(() => {
+		canvas.showPointers(showPointers);
+		canvas.render();
+	}, [showPointers]);
+
 	// Function to handle button clicks
 	const handleButtonClick = (action: string) => {
 		let elem: Structure | undefined;
@@ -151,11 +157,9 @@ export default function Home() {
 			case 'New':
 			case 'Clear':
 				elem = createStructure(...dataStructureSelection)!;
-				console.log(elem);
 				break;
 			case 'Default':
 				elem = createDefaultStructure(...dataStructureSelection)!;
-				console.log(elem);
 				break;
 			default:
 			break;
@@ -211,6 +215,10 @@ export default function Home() {
 							</div>
 							<div>
 								<button title={t('buttons.next-title')} className="inline-flex gap-2 border black border-1 border-black rounded px-2 disabled:bg-gray-400 disabled:opacity-20" disabled={!paused}  onClick={() => canvas.stepNext() }>{ `${t('buttons.next')} ⏭️` }</button>
+							</div>
+							<div className="flex flex-row gap-2 border black border-1 border-black rounded px-2 items-center">
+								<input type="checkbox" title="Show pointers" id="show-pointers" name="show-pointers" checked={showPointers} onChange={() => setShowPointers(!showPointers)}/>
+								<label htmlFor="show-pointers">Show pointers</label>
 							</div>
 							{/* @todo Undo button Issue #7 */}
 							{/* <div>
