@@ -8,6 +8,8 @@
         "insert": "Insert",
         "search": "Search",
         "remove": "Remove",
+        "iterator-begin": "Begin iterator",
+        "iterator-next": "Iterator next",
         "pause": "Pause",
         "pause-title": "Pause the visualization",
         "play": "Play",

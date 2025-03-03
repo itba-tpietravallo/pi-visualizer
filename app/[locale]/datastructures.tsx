@@ -378,7 +378,7 @@ export class Node extends DrawableElement {
             ctx.font = `${Math.ceil(fontSize * 10) / 10}px Arial`;
             ctx.fillText(`next: ${ !this.next ? "null" : `&Node<${this.next.toString()}>` }`, x + size / 2 + offsetX, y + size / 2 + fontSize / 2 + offsetY);
         } else {
-            let fontSize = 20 * zoom;
+            const fontSize = 20 * zoom;
             ctx.font = `${Math.ceil(fontSize * 10) / 10}px Arial`;
             ctx.fillText(this.toString(), x + size / 2 + offsetX, y + size / 2 + offsetY);
         }
@@ -1121,6 +1121,20 @@ export abstract class ADT extends Structure {
                 name: 'buttons.search',
                 modifier: modifiers[2]!,
                 action: (data: any) => canvas.wrapGenerator(this.search(data))
+            },
+            {
+                name: 'buttons.iterator-begin',
+                action: () => {
+                    this.iteratorBegin();
+                    canvas.render();
+                },
+            },
+            {
+                name: 'buttons.iterator-next',
+                action: () => {
+                    this.iteratorNext();
+                    canvas.render();
+                },
             }
         ]
     }
@@ -1190,8 +1204,8 @@ export abstract class ADT extends Structure {
             ctx.fillText('*', transformedX + width - padding, transformedY + height / 2 + padding * 1.5);
             if (value instanceof Structure) {
                 if (this.drawStructure) {
-                    value.setPos(x + 225, y - 10);
-                    value.setSize(50);
+                    value.setPos(x + 225, y - (this.drawPointers ? 19.5 : 10));
+                    value.setSize(this.drawPointers ? 75 : 50);
                     Node.drawArrow(canvas, x + width / zoom - 30, y, value.x, value.y, height / zoom, value.size);
                     value.draw(canvas);
                 }
@@ -1201,7 +1215,7 @@ export abstract class ADT extends Structure {
                 ctx.fillText('NOT IMPLEMENTED', transformedX + width - padding, transformedY + height / 2 + padding);
             }
         } else {
-            ctx.fillText(value?.toString() || "undefined", transformedX + width - padding, transformedY + height / 2 + padding);
+            ctx.fillText(value?.toString() || "null", transformedX + width - padding, transformedY + height / 2 + padding);
         }
 
         canvas.restoreSettings(prev);

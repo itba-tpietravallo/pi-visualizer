@@ -8,6 +8,8 @@
         "insert": "Insert",
         "search": "Buscar",
         "remove": "Remover",
+        "iterator-begin": "Comenzar iterador",
+        "iterator-next": "Iterador, siguiente",
         "pause": "Pausar",
         "pause-title": "Pausa la visualización",
         "play": "Reproducir",
