@@ -1,8 +1,8 @@
 export class Canvas {
     private elements: DrawableElement[] = [];
     private zoom: number = 1;
-    private offsetX = 0;
-    private offsetY = 0;
+    private offsetX = 100;
+    private offsetY = 100;
     private ctx: CanvasRenderingContext2D | null = null;
     private intervalMS = 200;
     private lastTimerResolve: ((value: unknown) => void) | null = null;
@@ -311,11 +311,13 @@ export enum Display {
 
 export enum NodeType {
     RECTANGULAR = 'Rectangular',
-    CIRCULAR = 'Circular'
+    CIRCULAR = 'Circular',
+    VECTOR = 'VectorNode',
 }
 
 export class Node extends DrawableElement {
     public type: NodeType = NodeType.CIRCULAR;
+    protected memoryAddr: number = 0xFFFF;
 
     constructor(public key: any, public value: any, public next: Node | null = null) {
         super();
@@ -361,7 +363,7 @@ export class Node extends DrawableElement {
             ctx.closePath();
             ctx.fill();
             ctx.stroke();
-        } else if (this.type === NodeType.RECTANGULAR || this.drawPointers) {
+        } else if ((this.type === NodeType.RECTANGULAR || this.type === NodeType.VECTOR)  || this.drawPointers) {
             ctx.fillRect(x + offsetX, y + offsetY, size, size);
             ctx.strokeRect(x + offsetX, y + offsetY, size, size);
         }
@@ -374,10 +376,14 @@ export class Node extends DrawableElement {
             let fontSize = 16 * zoom;
             ctx.font = `${Math.ceil(fontSize * 10) / 10}px Arial`;
             ctx.fillText(`value: ${this.toString()}`, x + size / 2 + offsetX, y + size / 2 - fontSize / 2 + offsetY);
-            
+
             fontSize *= 0.6;
             ctx.font = `${Math.ceil(fontSize * 10) / 10}px Arial`;
-            ctx.fillText(`next: ${ !this.next ? "null" : `&Node<${this.next.toString()}>` }`, x + size / 2 + offsetX, y + size / 2 + fontSize / 2 + offsetY);
+            let str = this.type === NodeType.VECTOR ?
+                `addr: 0x${this.memoryAddr.toString(16).toUpperCase().padStart(4, '0')}`:
+                `next: ${ !this.next ? "null" : `&Node<${this.next.toString()}>` }`;
+        
+            ctx.fillText(str, x + size / 2 + offsetX, y + size / 2 + fontSize / 2 + offsetY);
         } else {
             const fontSize = 20 * zoom;
             ctx.font = `${Math.ceil(fontSize * 10) / 10}px Arial`;
@@ -395,7 +401,10 @@ export class Node extends DrawableElement {
         }
     }
 
-
+    setMemoryAddr(addr: number) {
+        this.memoryAddr = addr;
+        return this;
+    }
 }
 
 export class Vector extends Structure {
@@ -404,6 +413,7 @@ export class Vector extends Structure {
     public static readonly border_size = 5;
     public static readonly bgColor = 'silver';
     protected elements: (Node | null)[] = [];
+    protected memoryAddr: number = Math.floor(Math.random() * 0x0FFF);
 
     constructor() {
         super();
@@ -429,6 +439,7 @@ export class Vector extends Structure {
         this.showPointers(this.drawPointers);
         const ctx = canvas.getContext()!;
         if (!ctx) throw new Error('Canvas context is null. Catastrophic');
+
         const [ offsetX, offsetY ] = canvas.getOffset();
         const zoom = canvas.getZoom();
         const size = this.size * zoom;
@@ -444,8 +455,18 @@ export class Vector extends Structure {
         ctx.fillStyle = Vector.bgColor;
         ctx.setLineDash([5, 5]);
         ctx.lineWidth = 2;
-        ctx.fillRect(x + offsetX - border / 2, y + offsetY - border / 2, width, height);
-        ctx.strokeRect(x + offsetX - border / 2, y + offsetY - border / 2, width, height);
+
+        const renderMemoryInfo = this.drawPointers && this.display === Display.HORIZONTAL;
+        const memoryInfoHeight = 30 * zoom * (renderMemoryInfo ? 1 : 0);
+        height += memoryInfoHeight;
+        ctx.fillRect(x + offsetX - border / 2, y + offsetY - border / 2 - memoryInfoHeight, width, height);
+        ctx.strokeRect(x + offsetX - border / 2, y + offsetY - border / 2 - memoryInfoHeight, width, height);
+
+        ctx.font = `${16 * zoom}px Arial`;
+        ctx.fillStyle = 'rgb(0,0,0)';
+        if (renderMemoryInfo) {
+            ctx.fillText(`Memory address: 0x${this.memoryAddr.toString(16).toUpperCase().padStart(4, '0')}`, x + offsetX, y + offsetY - memoryInfoHeight + 20 * zoom);
+        }
 
         canvas.restoreSettings(settings);
 
@@ -463,9 +484,15 @@ export class Vector extends Structure {
                     _x = x;
                     _y = y + i * Vector.separation * this.size * zoom;
                 };
-                canvas.getContext()?.fillRect(_x + offsetX, _y + offsetY, this.size * zoom, this.size * zoom);
+                ctx.fillRect(_x + offsetX, _y + offsetY, this.size * zoom, this.size * zoom);
+                if (renderMemoryInfo) {
+                    ctx.fillStyle = 'rgb(255,255,255)';
+                    ctx.font = `${16 * zoom}px Arial`;
+                    ctx.fillText(`addr: ${(this.memoryAddr + i).toString(16).toUpperCase().padStart(4, '0')}`, _x + offsetX + this.size * zoom / 2, _y + offsetY + this.size * zoom / 2);
+                }
             }
         }
+
         return this;
     }
 
@@ -500,7 +527,9 @@ export class Vector extends Structure {
 
     showPointers(bool: boolean) {
         super.showPointers(bool);
-        this.elements.forEach((elem) => elem?.showPointers(bool));
+        for (let i = 0; i < this.elements.length; i++) {
+            this.elements[i]?.showPointers(bool);
+        }
         return this;
     }
 
@@ -509,7 +538,8 @@ export class Vector extends Structure {
             return this.elements[data];
         }
         const newNode = new Node(data, value);
-        newNode.setType(NodeType.RECTANGULAR);
+        newNode.setType(NodeType.VECTOR);
+        newNode.setMemoryAddr(this.memoryAddr + data);
         this.elements[data] = newNode;
         return newNode;
     }
@@ -581,8 +611,7 @@ export class StaticVector extends Vector {
     // @ts-expect-error eslint
     * insert(data: any, value: any = null) {
         if (data < this.elements.length) {
-            const s = yield * super.insert(data, value);
-            return s;
+            return yield * super.insert(data, value);
         } else {
             return null;
         }
@@ -1055,6 +1084,15 @@ export class Composed extends Structure {
                 yield * elem.value.iterateElements();
             }
         }
+    }
+
+    showPointers(bool: boolean): void {
+        super.showPointers(bool);
+        this.head?.showPointers(bool);
+        this.applyToElements(e => {
+            e.showPointers(bool);
+            if (e instanceof Node && e.value instanceof Structure) e.value.showPointers(bool);
+        });
     }
 
     static default(t1: StructureType = StructureType.LIST, t2: StructureType = StructureType.LIST): Composed {
