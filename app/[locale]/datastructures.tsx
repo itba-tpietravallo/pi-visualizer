@@ -379,7 +379,7 @@ export class Node extends DrawableElement {
 
             fontSize *= 0.6;
             ctx.font = `${Math.ceil(fontSize * 10) / 10}px Arial`;
-            let str = this.type === NodeType.VECTOR ?
+            const str = this.type === NodeType.VECTOR ?
                 `addr: 0x${this.memoryAddr.toString(16).toUpperCase().padStart(4, '0')}`:
                 `next: ${ !this.next ? "null" : `&Node<${this.next.toString()}>` }`;
         
@@ -722,8 +722,11 @@ export class List extends Structure {
             return this.head;
         }
 
-        let current = this.head;
+        let current: Node = this.head;
+
         yield current;
+
+        if (this.head.key === data && !this.allowDuplicates) return this.head;
 
         while (current.next && data > current.next.key) {
             current = current.next;
