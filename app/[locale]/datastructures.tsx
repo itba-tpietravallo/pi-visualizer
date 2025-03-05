@@ -1355,7 +1355,7 @@ export class ListADT extends ADT {
 
     constructor() {
         super();
-        this.structure = new List().setDefaultDrawAttributes();
+        this.structure = new List(false).setDefaultDrawAttributes();
     }
 
     static ofLength(length: number) {
