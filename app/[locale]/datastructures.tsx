@@ -1,3 +1,6 @@
+let cmpAsStrings = false;
+let cmp: (a: any, b: any) => number = cmpAsStrings ? (a,b) => a.toString().localeCompare(b.toString()) : (a,b) => a - b;
+
 export class Canvas {
     private elements: DrawableElement[] = [];
     private zoom: number = 1;
@@ -145,6 +148,11 @@ export class Canvas {
     showPointers(bool: boolean) {
         this.drawPointers = bool;
         this.elements.forEach((element) => element.showPointers(bool));
+        return this;
+    }
+
+    compareAsStrings(bool: boolean) {
+        cmpAsStrings = bool;
     }
 }
 
@@ -189,6 +197,7 @@ export abstract class DrawableElement {
 
     showPointers(bool: boolean) {
         this.drawPointers = bool;
+        return this;
     }
 
     static drawArrow(Canvas: Canvas, fromx: number, fromy: number, tox: number, toy: number, fromSize: number, toSize: number) {
@@ -321,10 +330,11 @@ export class Node extends DrawableElement {
 
     constructor(public key: any, public value: any, public next: Node | null = null) {
         super();
+        console.log(`new node with values:`, key, value, next);
     }
 
     toString() {
-        if (this.value == null && typeof this.key != 'number') {
+        if (this.value == null && !this.key && typeof this.key != 'number') {
             return this.value === null ? "null" : "undefined";
         };
         const t = (typeof this.value == "string" || typeof this.value == 'number') ? this.value.toString() : this.key.toString()
@@ -443,8 +453,8 @@ export class Vector extends Structure {
         const [ offsetX, offsetY ] = canvas.getOffset();
         const zoom = canvas.getZoom();
         const size = this.size * zoom;
-        const x = this.x * zoom;
-        const y = this.y * zoom;
+        let x = this.x * zoom;
+        let y = this.y * zoom;
         const border = Vector.border_size * zoom;
         let width = (this.elements.length - 1) * (Vector.separation - 1) * size + this.elements.length * size + border;
         let height = size + border;
@@ -470,6 +480,8 @@ export class Vector extends Structure {
 
         canvas.restoreSettings(settings);
 
+        x /= zoom;
+        y /= zoom;
         for (let i = 0; i < this.elements.length; i++) {
             const elem = this.elements[i];
             if (elem != null && elem != undefined) {
@@ -477,19 +489,26 @@ export class Vector extends Structure {
             } else {
                 ctx.fillStyle = this.color;
                 let _x,_y;
+
                 if (this.display === Display.HORIZONTAL) {
-                    _x = x + i * Vector.separation * this.size * zoom;
+                    _x = x + i * Vector.separation * this.size;
                     _y = y;
                 } else {
                     _x = x;
-                    _y = y + i * Vector.separation * this.size * zoom;
+                    _y = y + i * Vector.separation * this.size;
                 };
-                ctx.fillRect(_x + offsetX, _y + offsetY, this.size * zoom, this.size * zoom);
-                if (renderMemoryInfo) {
-                    ctx.fillStyle = 'rgb(255,255,255)';
-                    ctx.font = `${16 * zoom}px Arial`;
-                    ctx.fillText(`addr: ${(this.memoryAddr + i).toString(16).toUpperCase().padStart(4, '0')}`, _x + offsetX + this.size * zoom / 2, _y + offsetY + this.size * zoom / 2);
-                }
+
+                if (this.drawPointers) {
+                    new Node(null, "?", null)
+                        .setDefaultDrawAttributes()
+                        .setPos(_x, _y)
+                        .setHightlight(canvas, false)
+                        .showPointers(true)
+                        .setType(NodeType.VECTOR)
+                        .setMemoryAddr(this.memoryAddr + i)
+                        .draw(canvas);
+                } else
+                    ctx.fillRect(_x * zoom + offsetX, _y * zoom + offsetY, this.size * zoom, this.size * zoom);
             }
         }
 
@@ -717,7 +736,7 @@ export class List extends Structure {
             return this.head;
         }
 
-        if (data < this.head.key) {
+        if (cmp(data, this.head.key) < 0) {
             this.head = new Node(data, value, this.head);
             return this.head;
         }
@@ -726,14 +745,14 @@ export class List extends Structure {
 
         yield current;
 
-        if (this.head.key === data && !this.allowDuplicates) return this.head;
+        if (cmp(this.head.key, data) === 0 && !this.allowDuplicates) return this.head;
 
-        while (current.next && data > current.next.key) {
+        while (current.next && cmp(data, current.next.key) > 0) {
             current = current.next;
             yield current;
         }
 
-        if (!this.allowDuplicates && current.next && current.next.key == data) return current.next;
+        if (!this.allowDuplicates && current.next && cmp(current.next.key, data) === 0) return current.next;
 
         current.next = new Node(data, value, current.next);
         return current.next;
@@ -742,7 +761,7 @@ export class List extends Structure {
     * remove(key: any) {
         if (this.head === null) return false;
 
-        if (this.head.key === key) {
+        if (cmp(this.head.key, key) === 0) {
             yield this.head;
             this.head = this.head.next;
             return true;
@@ -750,8 +769,8 @@ export class List extends Structure {
 
         let current = this.head;
         yield current;
-        while (current.next && current.next.key <= key) {
-            if (current.next.key == key) {
+        while (current.next && cmp(current.next.key, key) <= 0) {
+            if (cmp(current.next.key, key) == 0) {
                 yield current.next ;
                 current.next = current.next.next;
                 return true;
@@ -766,10 +785,10 @@ export class List extends Structure {
     * search(key: any) {
         let current = this.head;
         while (current) {
-            if (current.key < key) {
+            if (cmp(current.key, key) < 0) {
                 yield current;
             }
-            if (current.key == key) {
+            if (cmp(current.key, key) === 0) {
                 return current;
             }
             current = current.next;
@@ -1089,13 +1108,14 @@ export class Composed extends Structure {
         }
     }
 
-    showPointers(bool: boolean): void {
+    showPointers(bool: boolean) {
         super.showPointers(bool);
         this.head?.showPointers(bool);
         this.applyToElements(e => {
             e.showPointers(bool);
             if (e instanceof Node && e.value instanceof Structure) e.value.showPointers(bool);
         });
+        return this;
     }
 
     static default(t1: StructureType = StructureType.LIST, t2: StructureType = StructureType.LIST): Composed {
@@ -1330,9 +1350,10 @@ export abstract class ADT extends Structure {
         return yield * this.structure.iterateElements();
     }
 
-    showPointers(bool: boolean): void {
+    showPointers(bool: boolean) {
         this.drawPointers = bool;
         this.structure?.showPointers(bool);
+        return this;
     }
 
     iteratorBegin() {
