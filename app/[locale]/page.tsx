@@ -16,9 +16,10 @@ export default function Home() {
 	const [ origin, setOrigin ] = useState({ x: 0, y: 0 });
 	const [ isDragging, setIsDragging ] = useState(false);
 	const [ paused, setPaused ] = useState(false);
-	const [ speed, setSpeed ] = useState(80); 
+	const [ speed, setSpeed ] = useState(80);
 	const [ inputValue1, setInputValue1 ] = useState(0);
 	const [ inputValue2, setInputValue2 ] = useState(0);
+    const [ cmpAsStrings, setCmpAsStrings ] = useState(false);
 	const [ dataStructureSelection, setDataStructureSelection ] = useState([StructureType.LIST, StructureType.EMPTY] as [StructureType, StructureType]);
 	const [ actions, setActions ] = useState<ReturnType<Structure["getActions"]>>([]);
 	const [ showPointers, setShowPointers ] = useState(false);
@@ -151,6 +152,13 @@ export default function Home() {
 		canvas.render();
 	}, [showPointers]);
 
+	useEffect(() => {
+		const elem = createStructure(...dataStructureSelection)!;
+		canvas.compareAsStrings(cmpAsStrings);
+		canvas.replaceElements(elem);
+		setActions(elem.getActions(canvas));
+	}, [cmpAsStrings]);
+
 	// Function to handle button clicks
 	const handleButtonClick = (action: string) => {
 		let elem: Structure | undefined;
@@ -179,7 +187,7 @@ export default function Home() {
 
 	return (
 		<>
-		<div data-display-warning={displayMobileWarning.toString()} className="w-full h-screen flex flex-col md:hidden data-[display-warning=false]:hidden items-center justify-center text-2xl">
+		<div data-display-warning={displayMobileWarning.toString()} className="w-full h-screen flex flex-col sm:hidden data-[display-warning=false]:hidden items-center justify-center text-2xl">
 			<div className="text-4xl">🚧</div>
 			<p className="text-center">{ t('mobile-warning') }</p>
 			<a className="border border-black p-1 px-3 rounded-lg bg-yellow-400/20 mt-4 cursor-pointer" onClick={() => setDisplayMobileWarning(false)}>I understand, proceed anyways</a>
@@ -195,8 +203,10 @@ export default function Home() {
 					className="pb-2 max-w-full"
 					inputValue1={inputValue1}
 					inputValue2={inputValue2}
+					cmpAsStrings={cmpAsStrings}
 					setInputValue1={setInputValue1}
 					setInputValue2={setInputValue2}
+					setCmpAsStrings={setCmpAsStrings}
 					dataStructureSelection={dataStructureSelection}
 					actions={actions}
 					handleButtonClick={handleButtonClick}

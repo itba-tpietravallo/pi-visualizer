@@ -1,5 +1,5 @@
 let cmpAsStrings = false;
-let cmp: (a: any, b: any) => number = cmpAsStrings ? (a,b) => a.toString().localeCompare(b.toString()) : (a,b) => a - b;
+const cmp: (a: any, b: any) => number = cmpAsStrings ? (a,b) => a.toString().localeCompare(b.toString()) : (a,b) => a - b;
 
 export class Canvas {
     private elements: DrawableElement[] = [];
