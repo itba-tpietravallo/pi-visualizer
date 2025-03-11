@@ -1,6 +1,10 @@
 {
     "title": "Data structures visualizer",
     "mobile-warning": "This page is not optimized for mobile devices. Please use a desktop browser for the best experience.",
+    "menu": {
+        "select-datastructure": "Select which structure to play with. You may select two to nest structures (Matrices, nested lists, etc)",
+        "input-data": "Input the data to use when performing actions"
+    },
     "buttons": {
         "speed": "Speed",
         "origin": "Origin",
@@ -18,7 +22,11 @@
         "next": "Next",
         "next-title": "Advance to the next step",
         "undo": "Undo",
-        "undo-title": "Undo the last operation. Wait for the current operation to finish before undoing"
+        "undo-title": "Undo the last operation. Wait for the current operation to finish before undoing",
+        "first-key": "First key",
+        "second-key": "Second key",
+        "cmp-as-strings": "compare as strings",
+        "show-pointers": "Show pointers"
     },
     "action-modifier": {
         "first": "first",

@@ -1,11 +1,15 @@
 {
     "title": "Visualizador de estructuras de datos",
     "mobile-warning": "Esta página no está optimizada para dispositivos móviles. Por favor, usa un navegador de escritorio para la mejor experiencia.",
+    "menu": {
+        "select-datastructure": "Selecciona la estructura con la que jugar. Puedes seleccionar dos para anidar estructuras (Matrices, lista de listas, etc)",
+        "input-data": "Ingresa los datos a usar al realizar acciones"
+    },
     "buttons": {
         "speed": "Velocidad",
         "origin": "Origen",
         "clear": "Limpiar", 
-        "create-default": "Crear inicializado",
+        "create-default": "Crear default",
         "insert": "Insert",
         "search": "Buscar",
         "remove": "Remover",
@@ -18,7 +22,11 @@
         "next": "Siguiente",
         "next-title": "Avanza al siguiente paso",
         "undo": "Deshacer",
-        "undo-title": "Deshace la última operación. Espera a que la operación actual termine antes de deshacer"
+        "undo-title": "Deshace la última operación. Espera a que la operación actual termine antes de deshacer",
+        "first-key": "Primer clave",
+        "second-key": "Segunda clave",
+        "cmp-as-strings": "comparar como strings",
+        "show-pointers": "Mostrar punteros"
     },
     "action-modifier": {
         "first": "primero",

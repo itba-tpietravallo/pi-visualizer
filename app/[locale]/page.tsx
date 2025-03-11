@@ -236,7 +236,7 @@ export default function Home() {
 							</div>
 							<div className="flex flex-row gap-2 border black border-1 border-black rounded px-2 items-center">
 								<input type="checkbox" title="Show pointers" id="show-pointers" name="show-pointers" checked={showPointers} onChange={() => setShowPointers(!showPointers)}/>
-								<label htmlFor="show-pointers">Show pointers</label>
+								<label htmlFor="show-pointers">{t('buttons.show-pointers')}</label>
 							</div>
 							{/* @todo Undo button Issue #7 */}
 							{/* <div>

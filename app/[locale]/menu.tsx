@@ -69,7 +69,7 @@ export default function Menu({
         <form id="menu" className={clsx(className, "flex flex-col lg:flex-row gap-y-2 gap-x-2 w-[96%]")} onSubmit={e => (e.preventDefault(), false)}>
             <div id="structure-selection" className="flex flex-col gap-y-1 gap-x-2 m-2 flex-wrap rounded border border-1 border-black px-2 py-1">
                 <div className='flex flex-col gap-2'>
-                    <p>Select which structure to play with. You may select two to nest structures (Matrices, nested lists, etc)</p>
+                    <p>{t('menu.select-datastructure')}</p>
                     <div className='flex flex-row gap-2 flex-wrap'>
                         <SelectDataTypeInput ref={select1} defaultValue={dataStructureSelection[0]} primaryValue={dataStructureSelection[0]} onChange={(event) => handleSelect(event, 'structure1')} paused={paused} t={t}/>
                         <SelectDataTypeInput ref={select2} defaultValue={dataStructureSelection[1]} primaryValue={dataStructureSelection[0]} onChange={(event) => handleSelect(event, 'structure2')} paused={paused} t={t} secondaryInput={true}/>
@@ -82,14 +82,14 @@ export default function Menu({
 
             <div id="data-input" className="flex flex-col gap-y-1 gap-x-2 m-2 max-w-full flex-wrap rounded border border-1 border-black px-2 py-1">
                 <div>
-                    <p className='inline-block'>Input the data to use when performing actions &nbsp;</p>
-                    <div className='inline-flex gap-2 items-center justify-start'>(<input type="checkbox" name="cmp-as-strings" id="cmp-as-strings" checked={cmpAsStrings} onChange={() => setCmpAsStrings(!cmpAsStrings)} /><label htmlFor='cmp-as-strings'>compare as strings</label>)</div>
+                    <p className='inline-block'>{t('menu.input-data')} &nbsp;</p>
+                    <div className='inline-flex gap-2 items-center justify-start'>(<input type="checkbox" name="cmp-as-strings" id="cmp-as-strings" checked={cmpAsStrings} onChange={() => setCmpAsStrings(!cmpAsStrings)} /><label htmlFor='cmp-as-strings'>{t('buttons.cmp-as-strings')}</label>)</div>
                 </div>
                 <div className='flex flex-row gap-2'>
-                <p>First key</p>
+                <p>{t('buttons.first-key')}</p>
                 <DataInputField form='menu' paused={paused} defaultValue={inputValue1} setter={setInputValue1} allowString={cmpAsStrings && allowsStringTypes.includes(dataStructureSelection[0])}/>
                 <hr className="border-black border-l h-full"/>
-                <p>Second key</p>
+                <p>{t('buttons.second-key')}</p>
                 <DataInputField form='menu' paused={paused || !showSecondInput} defaultValue={inputValue2} setter={setInputValue2} allowString={cmpAsStrings && allowsStringTypes.includes(dataStructureSelection[1])}/>
                 </div>
                 <div id='actions' className='flex flex-row gap-2'>
