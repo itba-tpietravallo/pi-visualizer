@@ -1329,8 +1329,8 @@ export abstract class ADT extends Structure {
     * insert(data: any, value: any = null) {
         this.drawStructure = true;
         const has = exhaustGenerator(this.structure!.search(data));
-        const node = yield * this.structure!.insert(data, value);
-        if ( (this.allowDuplicates && node) || (!has && node != undefined && node != null)) this.elemCount++;
+        const node = yield* this.structure!.insert(data, value);
+        if ( (this.allowDuplicates && node) || (has === null && node != undefined && node != null)) this.elemCount++;
         return node;
     }
 
@@ -1373,6 +1373,7 @@ export abstract class ADT extends Structure {
 
 export class ListADT extends ADT {
     protected type: StructureType = StructureType.LISTADT;
+    public allowDuplicates = false;
 
     constructor() {
         super();
